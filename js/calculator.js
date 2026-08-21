@@ -18,11 +18,6 @@ class CalculatorEngine {
         this.alphaActive = false;
         this.history = [];
         this.justEvaluated = false;
-
-        // STAT mode data
-        this.statData = { x: [], y: [] };
-        this.statType = '1var';
-        this.statResults = {};
     }
 
     /* ---- Input Methods ---- */
@@ -632,14 +627,11 @@ class CalculatorEngine {
     }
 
     cycleCalcMode() {
-        const modes = ['NORMAL', 'STAT', 'DRILL'];
-        const idx = modes.indexOf(this.calcMode);
-        this.calcMode = modes[(idx + 1) % modes.length];
-        return this.calcMode;
+        return 'NORMAL';
     }
 
     setCalcMode(mode) {
-        this.calcMode = mode;
+        this.calcMode = 'NORMAL';
     }
 
     /* ---- Memory ---- */
@@ -688,176 +680,5 @@ class CalculatorEngine {
                 this.memoryActive = true;
             }
         } catch (e) { /* ignore */ }
-    }
-
-    /* ---- Statistics ---- */
-
-    statClearData() {
-        this.statData = { x: [], y: [] };
-        this.statResults = {};
-    }
-
-    statSetType(type) {
-        this.statType = type;
-    }
-
-    statAddPoint(x, y) {
-        this.statData.x.push(x);
-        if (y !== undefined) this.statData.y.push(y);
-    }
-
-    statCalculate() {
-        const x = this.statData.x;
-        const y = this.statData.y;
-        const n = x.length;
-
-        if (n === 0) return { error: 'No data' };
-
-        const results = {};
-        results.n = n;
-
-        if (this.statType === '1var') {
-            const sum = x.reduce((a, b) => a + b, 0);
-            const mean = sum / n;
-            const variance = x.reduce((a, b) => a + (b - mean) ** 2, 0) / n;
-            const sampleVariance = n > 1 ? x.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1) : 0;
-            const stdDev = Math.sqrt(variance);
-            const sampleStdDev = Math.sqrt(sampleVariance);
-            const sumSq = x.reduce((a, b) => a + b * b, 0);
-
-            results.sum = sum;
-            results.mean = mean;
-            results.populationStdDev = stdDev;
-            results.sampleStdDev = sampleStdDev;
-            results.populationVariance = variance;
-            results.sampleVariance = sampleVariance;
-            results.sumOfSquares = sumSq;
-            results.min = Math.min(...x);
-            results.max = Math.max(...x);
-            results.range = results.max - results.min;
-
-            // Median
-            const sorted = [...x].sort((a, b) => a - b);
-            if (n % 2 === 0) {
-                results.median = (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
-            } else {
-                results.median = sorted[Math.floor(n / 2)];
-            }
-
-            // Mode
-            const freq = {};
-            x.forEach(v => freq[v] = (freq[v] || 0) + 1);
-            const maxFreq = Math.max(...Object.values(freq));
-            if (maxFreq > 1) {
-                results.mode = Object.keys(freq).filter(k => freq[k] === maxFreq).map(Number);
-            }
-        } else if (this.statType === 'linear' && y.length === n && n >= 2) {
-            const sumX = x.reduce((a, b) => a + b, 0);
-            const sumY = y.reduce((a, b) => a + b, 0);
-            const sumXY = x.reduce((a, xi, i) => a + xi * y[i], 0);
-            const sumX2 = x.reduce((a, b) => a + b * b, 0);
-            const sumY2 = y.reduce((a, b) => a + b * b, 0);
-
-            const denom = n * sumX2 - sumX * sumX;
-            if (denom === 0) return { error: 'Cannot compute regression' };
-
-            const a = (sumY * sumX2 - sumX * sumXY) / denom;
-            const b = (n * sumXY - sumX * sumY) / denom;
-            const r = (n * sumXY - sumX * sumY) /
-                      Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
-
-            results.a = a;
-            results.b = b;
-            results.r = isNaN(r) ? 0 : r;
-            results.r2 = r * r;
-            results.formula = `y = ${this._formatNumber(a)} + ${this._formatNumber(b)}x`;
-        } else if (this.statType === 'quadratic' && y.length === n && n >= 3) {
-            const sumX = x.reduce((a, b) => a + b, 0);
-            const sumY = y.reduce((a, b) => a + b, 0);
-            const sumX2 = x.reduce((a, b) => a + b * b, 0);
-            const sumX3 = x.reduce((a, b) => a + b * b * b, 0);
-            const sumX4 = x.reduce((a, b) => a + b * b * b * b, 0);
-            const sumXY = x.reduce((a, xi, i) => a + xi * y[i], 0);
-            const sumX2Y = x.reduce((a, xi, i) => a + xi * xi * y[i], 0);
-
-            // Solve 3x3 system using Cramer's rule
-            // [n, sumX, sumX2] [a]   [sumY]
-            // [sumX, sumX2, sumX3] [b] = [sumXY]
-            // [sumX2, sumX3, sumX4] [c]  [sumX2Y]
-            const M = [
-                [n, sumX, sumX2],
-                [sumX, sumX2, sumX3],
-                [sumX2, sumX3, sumX4]
-            ];
-            const B = [sumY, sumXY, sumX2Y];
-
-            const det = this._det3(M);
-            if (Math.abs(det) < 1e-15) return { error: 'Cannot compute regression' };
-
-            const Ma = [
-                [B[0], M[0][1], M[0][2]],
-                [B[1], M[1][1], M[1][2]],
-                [B[2], M[2][1], M[2][2]]
-            ];
-            const Mb = [
-                [M[0][0], B[0], M[0][2]],
-                [M[1][0], B[1], M[1][2]],
-                [M[2][0], B[2], M[2][2]]
-            ];
-            const Mc = [
-                [M[0][0], M[0][1], B[0]],
-                [M[1][0], M[1][1], B[1]],
-                [M[2][0], M[2][1], B[2]]
-            ];
-
-            const a = this._det3(Ma) / det;
-            const b = this._det3(Mb) / det;
-            const c = this._det3(Mc) / det;
-
-            results.a = a;
-            results.b = b;
-            results.c = c;
-            results.formula = `y = ${this._formatNumber(a)} + ${this._formatNumber(b)}x + ${this._formatNumber(c)}x\u00B2`;
-        }
-
-        this.statResults = results;
-        return results;
-    }
-
-    _det3(m) {
-        return m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
-             - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
-             + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
-    }
-
-    /* ---- Drill Mode ---- */
-
-    generateDrillProblem() {
-        const ops = ['+', '-', '*'];
-        const op = ops[Math.floor(Math.random() * ops.length)];
-        let a, b, answer, question;
-
-        switch (op) {
-            case '+':
-                a = Math.floor(Math.random() * 50) + 1;
-                b = Math.floor(Math.random() * 50) + 1;
-                answer = a + b;
-                question = `${a} + ${b}`;
-                break;
-            case '-':
-                a = Math.floor(Math.random() * 50) + 10;
-                b = Math.floor(Math.random() * a);
-                answer = a - b;
-                question = `${a} - ${b}`;
-                break;
-            case '*':
-                a = Math.floor(Math.random() * 12) + 1;
-                b = Math.floor(Math.random() * 12) + 1;
-                answer = a * b;
-                question = `${a} \u00D7 ${b}`;
-                break;
-        }
-
-        return { question, answer, op };
     }
 }
