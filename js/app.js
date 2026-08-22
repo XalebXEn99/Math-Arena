@@ -1347,7 +1347,7 @@
 
     const REPORTS_KEY = 'mathArena_reports';
     const GITHUB_REPO = 'XalebXEn99/Math-Arena';
-    const GITHUB_TOKEN = ''; // Add your fine-grained PAT here (must have Actions: Read/write permission)
+    const GITHUB_TOKEN = '';
     const REPORTS_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/master/reports.json`;
     const DISPATCH_URL = `https://api.github.com/repos/${GITHUB_REPO}/dispatches`;
 
@@ -1621,17 +1621,9 @@
         $navTabs.forEach(t => t.classList.toggle('active', t.dataset.view === 'game'));
     });
 
-    /* ---- Hidden footer trigger (triple-click) ---- */
-    let footerClicks = 0;
-    let footerTimer = null;
+    /* ---- Footer button ---- */
     $footerTrigger.addEventListener('click', () => {
-        footerClicks++;
-        if (footerTimer) clearTimeout(footerTimer);
-        footerTimer = setTimeout(() => { footerClicks = 0; }, 600);
-        if (footerClicks >= 3) {
-            footerClicks = 0;
-            showReportsView();
-        }
+        showReportsView();
     });
 
     /* ---- Init ---- */

@@ -951,12 +951,19 @@ body {
 }
 .reports-back-btn:hover { background: rgba(255,255,255,0.15); }
 
-/* Hidden footer trigger */
-.footer-trigger {
-    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-    width: 60px; height: 8px; background: transparent;
-    border: none; cursor: default; z-index: 50; opacity: 0;
+/* Footer */
+.site-footer {
+    text-align: center; padding: 30px 20px;
+    margin-top: 60px;
 }
+.footer-btn {
+    background: none; border: none;
+    color: rgba(255,255,255,0.08);
+    font-family: var(--font-main); font-size: 0.7rem;
+    cursor: default; transition: color 0.3s;
+    padding: 8px 16px;
+}
+.footer-btn:hover { color: rgba(255,255,255,0.08); }
 
 /* ============================================
    RESPONSIVE
