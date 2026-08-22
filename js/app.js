@@ -12,6 +12,7 @@
     const $gameView = document.getElementById('gameView');
     const $learnView = document.getElementById('learnView');
     const $calcView = document.getElementById('calcView');
+    const $reportsView = document.getElementById('reportsView');
     const $navTabs = document.querySelectorAll('.nav-tab');
 
     function switchView(view) {
@@ -19,6 +20,7 @@
         $gameView.classList.toggle('active', view === 'game');
         $learnView.classList.toggle('active', view === 'learn');
         $calcView.classList.toggle('active', view === 'calculator');
+        if ($reportsView) $reportsView.classList.remove('active');
     }
 
     document.querySelector('.top-nav').addEventListener('click', (e) => {
@@ -1333,7 +1335,6 @@
     const $nameModal = document.getElementById('nameModal');
     const $nameModalInput = document.getElementById('nameModalInput');
     const $nameModalSave = document.getElementById('nameModalSave');
-    const $reportsView = document.getElementById('reportsView');
     const $reportsBody = document.getElementById('reportsBody');
     const $reportsSummary = document.getElementById('reportsSummary');
     const $reportFilterName = document.getElementById('reportFilterName');
@@ -1347,7 +1348,7 @@
 
     const REPORTS_KEY = 'mathArena_reports';
     const GITHUB_REPO = 'XalebXEn99/Math-Arena';
-    const GITHUB_TOKEN = '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';
+    const GITHUB_TOKEN = '';
     const REPORTS_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/master/reports.json`;
     const DISPATCH_URL = `https://api.github.com/repos/${GITHUB_REPO}/dispatches`;
 
