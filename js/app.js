@@ -1347,7 +1347,7 @@
 
     const REPORTS_KEY = 'mathArena_reports';
     const GITHUB_REPO = 'XalebXEn99/Math-Arena';
-    const GITHUB_TOKEN = '';
+    const GITHUB_TOKEN = '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';
     const REPORTS_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/master/reports.json`;
     const DISPATCH_URL = `https://api.github.com/repos/${GITHUB_REPO}/dispatches`;
 
