@@ -115,11 +115,17 @@
         endGame();
         showScreen($menuScreen);
     });
-    $playAgainBtn.addEventListener('click', startGame);
+    $playAgainBtn.addEventListener('click', () => {
+        pendingAction = () => startGame();
+        showNameModal();
+    });
     $changeModeBtn.addEventListener('click', () => {
-        game.settings.mode = 'quiz';
-        game.settings.practiceTopic = null;
-        showScreen($menuScreen);
+        pendingAction = () => {
+            game.settings.mode = 'quiz';
+            game.settings.practiceTopic = null;
+            showScreen($menuScreen);
+        };
+        showNameModal();
     });
 
     /* =========================================================
@@ -1318,6 +1324,315 @@
     }
 
     initLearnView();
+
+    /* =========================================================
+       REPORT SYSTEM
+       ========================================================= */
+    let pendingAction = null;
+
+    const $nameModal = document.getElementById('nameModal');
+    const $nameModalInput = document.getElementById('nameModalInput');
+    const $nameModalSave = document.getElementById('nameModalSave');
+    const $reportsView = document.getElementById('reportsView');
+    const $reportsBody = document.getElementById('reportsBody');
+    const $reportsSummary = document.getElementById('reportsSummary');
+    const $reportFilterName = document.getElementById('reportFilterName');
+    const $reportFilterFrom = document.getElementById('reportFilterFrom');
+    const $reportFilterTo = document.getElementById('reportFilterTo');
+    const $reportApplyFilter = document.getElementById('reportApplyFilter');
+    const $reportClearFilter = document.getElementById('reportClearFilter');
+    const $reportDownload = document.getElementById('reportDownload');
+    const $footerTrigger = document.getElementById('footerTrigger');
+    const $reportsBackBtn = document.getElementById('reportsBackBtn');
+
+    const REPORTS_KEY = 'mathArena_reports';
+    const GITHUB_REPO = 'XalebXEn99/Math-Arena';
+    const GITHUB_TOKEN = ''; // Add your fine-grained PAT here (must have Actions: Read/write permission)
+    const REPORTS_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/master/reports.json`;
+    const DISPATCH_URL = `https://api.github.com/repos/${GITHUB_REPO}/dispatches`;
+
+    // Cache reports locally for offline access
+    let reportsCache = null;
+
+    async function getReports() {
+        // Try to fetch from GitHub first
+        try {
+            const response = await fetch(REPORTS_URL + '?t=' + Date.now());
+            if (response.ok) {
+                const reports = await response.json();
+                reportsCache = reports;
+                // Update local cache
+                localStorage.setItem(REPORTS_KEY, JSON.stringify(reports));
+                return reports;
+            }
+        } catch (e) {
+            console.log('Could not fetch reports from GitHub, using cache');
+        }
+        // Fallback to localStorage cache
+        try { return JSON.parse(localStorage.getItem(REPORTS_KEY)) || []; }
+        catch { return []; }
+    }
+
+    async function triggerReportWorkflow(report) {
+        if (!GITHUB_TOKEN) {
+            console.warn('GitHub token not set. Report saved locally only.');
+            // Fallback to localStorage
+            const reports = getReportsSync();
+            reports.push(report);
+            localStorage.setItem(REPORTS_KEY, JSON.stringify(reports));
+            return false;
+        }
+
+        try {
+            const encodedReport = encodeURIComponent(JSON.stringify(report));
+            const response = await fetch(DISPATCH_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    event_type: 'add-report',
+                    client_payload: { report: encodedReport }
+                })
+            });
+
+            if (response.status === 204) {
+                console.log('Report workflow triggered successfully');
+                // Also save to local cache immediately
+                const reports = getReportsSync();
+                reports.push(report);
+                localStorage.setItem(REPORTS_KEY, JSON.stringify(reports));
+                return true;
+            } else {
+                console.error('Failed to trigger workflow:', response.status, response.statusText);
+                return false;
+            }
+        } catch (e) {
+            console.error('Error triggering workflow:', e);
+            return false;
+        }
+    }
+
+    function getReportsSync() {
+        try { return JSON.parse(localStorage.getItem(REPORTS_KEY)) || []; }
+        catch { return []; }
+    }
+
+    function showNameModal() {
+        $nameModalInput.value = '';
+        $nameModal.classList.add('open');
+        setTimeout(() => $nameModalInput.focus(), 100);
+    }
+
+    function hideNameModal() {
+        $nameModal.classList.remove('open');
+    }
+
+    $nameModalSave.addEventListener('click', () => {
+        const name = $nameModalInput.value.trim();
+        if (!name) { $nameModalInput.focus(); return; }
+        saveCurrentReport(name);
+        hideNameModal();
+        if (pendingAction) { pendingAction(); pendingAction = null; }
+    });
+
+    $nameModalInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') $nameModalSave.click();
+    });
+
+    function saveCurrentReport(name) {
+        const s = game.settings;
+        let modeLabel = 'Quiz';
+        let topicLabel = '';
+
+        if (s.mode === 'timestables') {
+            modeLabel = 'Times Tables';
+            topicLabel = s.ttTable === 'all' ? 'All Tables' : `${s.ttTable} Times Table`;
+        } else if (s.mode === 'fractions') {
+            modeLabel = 'Fractions';
+            const fracLabels = { simplify: 'Simplify', add: 'Addition', subtract: 'Subtraction', multiply: 'Multiplication', divide: 'Division', lcm: 'LCM', hcf: 'HCF' };
+            topicLabel = fracLabels[s.fracType] || s.fracType;
+        } else if (s.mode === 'topic-practice') {
+            modeLabel = 'Practice';
+            const topic = learnCategories.flatMap(c => c.topics).find(t => t.id === s.practiceTopic);
+            topicLabel = topic ? topic.title : s.practiceTopic || '';
+        } else {
+            const opLabels = { mixed: 'All Mixed', '+': 'Addition', '-': 'Subtraction', '*': 'Multiplication', '/': 'Division' };
+            topicLabel = opLabels[s.operation] || s.operation || '';
+        }
+
+        const total = game.questions.length;
+        const correct = game.score;
+        const pct = Math.round((correct / total) * 100);
+
+        const report = {
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            name: name,
+            date: new Date().toISOString(),
+            mode: modeLabel,
+            topic: topicLabel,
+            score: correct,
+            total: total,
+            pct: pct,
+            time: game.elapsed,
+            answers: game.answers.map(a => ({
+                question: a.question,
+                userAnswer: a.userAnswer,
+                correctAnswer: a.correctAnswer,
+                correct: a.correct
+            }))
+        };
+
+        const reports = getReportsSync();
+        reports.push(report);
+        localStorage.setItem(REPORTS_KEY, JSON.stringify(reports));
+
+        // Trigger GitHub Actions workflow to save to shared database
+        triggerReportWorkflow(report);
+    }
+
+    /* ---- Reports View ---- */
+    async function showReportsView() {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        $reportsView.classList.add('active');
+        $navTabs.forEach(t => t.classList.remove('active'));
+        await renderReports();
+    }
+
+    async function renderReports() {
+        const reports = await getReports();
+        const nameFilter = $reportFilterName.value.trim().toLowerCase();
+        const fromFilter = $reportFilterFrom.value;
+        const toFilter = $reportFilterTo.value;
+
+        let filtered = reports;
+        if (nameFilter) {
+            filtered = filtered.filter(r => r.name.toLowerCase().includes(nameFilter));
+        }
+        if (fromFilter) {
+            const fromDate = new Date(fromFilter);
+            fromDate.setHours(0, 0, 0, 0);
+            filtered = filtered.filter(r => new Date(r.date) >= fromDate);
+        }
+        if (toFilter) {
+            const toDate = new Date(toFilter);
+            toDate.setHours(23, 59, 59, 999);
+            filtered = filtered.filter(r => new Date(r.date) <= toDate);
+        }
+
+        // Sort by date descending
+        filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        // Summary
+        const totalSessions = filtered.length;
+        const totalQuestions = filtered.reduce((s, r) => s + r.total, 0);
+        const totalCorrect = filtered.reduce((s, r) => s + r.score, 0);
+        const avgPct = totalSessions > 0 ? Math.round(filtered.reduce((s, r) => s + r.pct, 0) / totalSessions) : 0;
+        $reportsSummary.textContent = `${totalSessions} session${totalSessions !== 1 ? 's' : ''} | ${totalQuestions} questions | ${totalCorrect} correct | ${avgPct}% average`;
+
+        // Table rows
+        let html = '';
+        filtered.forEach(r => {
+            const d = new Date(r.date);
+            const dateStr = d.toLocaleDateString('en-ZA', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const timeStr = d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+            const scoreCls = r.pct >= 90 ? 'score-good' : r.pct >= 60 ? 'score-mid' : 'score-bad';
+            const time = formatTime(r.time);
+            const details = `${r.score}/${r.total}`;
+            html += `<tr>
+                <td>${dateStr} ${timeStr}</td>
+                <td>${escapeHtml(r.name)}</td>
+                <td>${escapeHtml(r.mode)}</td>
+                <td>${escapeHtml(r.topic)}</td>
+                <td class="${scoreCls}">${r.pct}%</td>
+                <td>${time}</td>
+                <td>${details}</td>
+            </tr>`;
+        });
+        $reportsBody.innerHTML = html || '<tr><td colspan="7" style="text-align:center;color:rgba(255,255,255,0.4);padding:24px;">No reports found</td></tr>';
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    $reportApplyFilter.addEventListener('click', renderReports);
+    $reportClearFilter.addEventListener('click', () => {
+        $reportFilterName.value = '';
+        $reportFilterFrom.value = '';
+        $reportFilterTo.value = '';
+        renderReports();
+    });
+
+    $reportDownload.addEventListener('click', async () => {
+        const reports = await getReports();
+        const nameFilter = $reportFilterName.value.trim().toLowerCase();
+        const fromFilter = $reportFilterFrom.value;
+        const toFilter = $reportFilterTo.value;
+
+        let filtered = reports;
+        if (nameFilter) filtered = filtered.filter(r => r.name.toLowerCase().includes(nameFilter));
+        if (fromFilter) {
+            const fromDate = new Date(fromFilter); fromDate.setHours(0, 0, 0, 0);
+            filtered = filtered.filter(r => new Date(r.date) >= fromDate);
+        }
+        if (toFilter) {
+            const toDate = new Date(toFilter); toDate.setHours(23, 59, 59, 999);
+            filtered = filtered.filter(r => new Date(r.date) <= toDate);
+        }
+        filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        if (filtered.length === 0) return;
+
+        let csv = 'Date,Name,Mode,Topic,Score,Total,Percentage,Time\n';
+        filtered.forEach(r => {
+            const d = new Date(r.date);
+            const dateStr = d.toLocaleDateString('en-ZA') + ' ' + d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+            csv += `"${dateStr}","${r.name}","${r.mode}","${r.topic}",${r.score},${r.total},${r.pct}%,"${formatTime(r.time)}"\n`;
+        });
+
+        // Add detailed breakdown per session
+        csv += '\n\nDetailed Answers\n';
+        filtered.forEach(r => {
+            const d = new Date(r.date);
+            csv += `\n${d.toLocaleDateString('en-ZA')} - ${r.name} - ${r.mode}: ${r.topic}\n`;
+            csv += 'Question,Your Answer,Correct Answer,Result\n';
+            r.answers.forEach((a, i) => {
+                csv += `"${i + 1}. ${a.question}","${a.userAnswer}","${a.correctAnswer}",${a.correct ? 'Correct' : 'Wrong'}\n`;
+            });
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `math-arena-reports-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+
+    $reportsBackBtn.addEventListener('click', () => {
+        $reportsView.classList.remove('active');
+        $gameView.classList.add('active');
+        $navTabs.forEach(t => t.classList.toggle('active', t.dataset.view === 'game'));
+    });
+
+    /* ---- Hidden footer trigger (triple-click) ---- */
+    let footerClicks = 0;
+    let footerTimer = null;
+    $footerTrigger.addEventListener('click', () => {
+        footerClicks++;
+        if (footerTimer) clearTimeout(footerTimer);
+        footerTimer = setTimeout(() => { footerClicks = 0; }, 600);
+        if (footerClicks >= 3) {
+            footerClicks = 0;
+            showReportsView();
+        }
+    });
 
     /* ---- Init ---- */
     updateCalcDisplay();

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Math Arena - Sharp EL-W535HT</title>
+    <title>Math Arena - Practice your fundamentals</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -320,6 +320,73 @@
             </div>
         </div>
     </div>
+
+    <!-- ===================== NAME ENTRY MODAL ===================== -->
+    <div class="name-modal-overlay" id="nameModal">
+        <div class="name-modal">
+            <h2>Enter Your Name</h2>
+            <p>Save your results before continuing</p>
+            <input type="text" class="name-modal-input" id="nameModalInput" placeholder="Your name" autocomplete="off">
+            <div class="name-modal-actions">
+                <button class="name-modal-btn primary" id="nameModalSave">Save &amp; Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== REPORTS VIEW ===================== -->
+    <div class="view reports-view" id="reportsView">
+        <div class="reports-header">
+            <h1>Activity Reports</h1>
+            <p class="reports-sub">Filter and review all practice sessions</p>
+        </div>
+        <div class="reports-filters">
+            <div class="filter-group">
+                <label>Name</label>
+                <input type="text" id="reportFilterName" placeholder="Filter by name">
+            </div>
+            <div class="filter-group">
+                <label>From</label>
+                <input type="date" id="reportFilterFrom">
+            </div>
+            <div class="filter-group">
+                <label>To</label>
+                <input type="date" id="reportFilterTo">
+            </div>
+            <div class="filter-group">
+                <label>&nbsp;</label>
+                <button class="filter-btn" id="reportApplyFilter">Apply</button>
+            </div>
+            <div class="filter-group">
+                <label>&nbsp;</label>
+                <button class="filter-btn secondary" id="reportClearFilter">Clear</button>
+            </div>
+            <div class="filter-group">
+                <label>&nbsp;</label>
+                <button class="filter-btn download" id="reportDownload">Download</button>
+            </div>
+        </div>
+        <div class="reports-summary" id="reportsSummary"></div>
+        <div class="reports-table-wrap">
+            <table class="reports-table" id="reportsTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Name</th>
+                        <th>Mode</th>
+                        <th>Topic</th>
+                        <th>Score</th>
+                        <th>Time</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody id="reportsBody"></tbody>
+            </table>
+        </div>
+        <button class="reports-back-btn" id="reportsBackBtn">Back</button>
+    </div>
+
+    <!-- Hidden footer trigger -->
+    <button class="footer-trigger" id="footerTrigger"></button>
 
     <script src="js/calculator.js"></script>
     <script src="js/app.js"></script>
