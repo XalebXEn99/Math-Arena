@@ -1426,30 +1426,124 @@
     $sessionDownloadBtn.addEventListener('click', () => {
         if (sessionReports.length === 0) return;
 
-        let csv = 'Date,Name,Mode,Topic,Score,Total,Percentage,Time\n';
-        sessionReports.forEach(r => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const margin = 20;
+        let y = margin;
+
+        // Title
+        doc.setFontSize(24);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(40, 40, 40);
+        doc.text('Math Arena - Session Report', pageWidth / 2, y, { align: 'center' });
+        y += 12;
+
+        // Subtitle
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 100, 100);
+        const now = new Date();
+        doc.text(`Generated: ${now.toLocaleDateString('en-ZA')} at ${now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}`, pageWidth / 2, y, { align: 'center' });
+        y += 10;
+
+        // Summary stats
+        const totalSessions = sessionReports.length;
+        const totalQuestions = sessionReports.reduce((s, r) => s + r.total, 0);
+        const totalCorrect = sessionReports.reduce((s, r) => s + r.score, 0);
+        const avgPct = totalSessions > 0 ? Math.round(sessionReports.reduce((s, r) => s + r.pct, 0) / totalSessions) : 0;
+
+        doc.setFillColor(245, 245, 245);
+        doc.rect(margin, y - 5, pageWidth - margin * 2, 20, 'F');
+        doc.setFontSize(10);
+        doc.setTextColor(60, 60, 60);
+        doc.text(`${totalSessions} session${totalSessions !== 1 ? 's' : ''}  |  ${totalQuestions} questions  |  ${totalCorrect} correct  |  ${avgPct}% average`, pageWidth / 2, y + 3, { align: 'center' });
+        y += 22;
+
+        // Divider
+        doc.setDrawColor(200, 200, 200);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 8;
+
+        // Each session
+        sessionReports.forEach((r, idx) => {
             const d = new Date(r.date);
             const dateStr = d.toLocaleDateString('en-ZA') + ' ' + d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
-            csv += `"${dateStr}","${r.name}","${r.mode}","${r.topic}",${r.score},${r.total},${r.pct}%,"${formatTime(r.time)}"\n`;
-        });
 
-        csv += '\n\nDetailed Answers\n';
-        sessionReports.forEach(r => {
-            const d = new Date(r.date);
-            csv += `\n${d.toLocaleDateString('en-ZA')} - ${r.name} - ${r.mode}: ${r.topic}\n`;
-            csv += 'Question,Your Answer,Correct Answer,Result\n';
+            // Check if we need a new page
+            if (y > 250) {
+                doc.addPage();
+                y = margin;
+            }
+
+            // Session header
+            doc.setFontSize(13);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(40, 40, 40);
+            doc.text(`Session ${idx + 1}: ${r.mode} - ${r.topic}`, margin, y);
+            y += 6;
+
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(120, 120, 120);
+            doc.text(`${dateStr}  |  ${r.name}  |  Score: ${r.score}/${r.total} (${r.pct}%)  |  Time: ${formatTime(r.time)}`, margin, y);
+            y += 6;
+
+            // Score bar
+            const barWidth = pageWidth - margin * 2;
+            const barHeight = 4;
+            const filledWidth = (r.pct / 100) * barWidth;
+            doc.setFillColor(230, 230, 230);
+            doc.rect(margin, y, barWidth, barHeight, 'F');
+            if (r.pct >= 90) doc.setFillColor(76, 175, 80);
+            else if (r.pct >= 60) doc.setFillColor(255, 193, 7);
+            else doc.setFillColor(244, 67, 54);
+            doc.rect(margin, y, filledWidth, barHeight, 'F');
+            y += 8;
+
+            // Detailed answers
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(80, 80, 80);
+            doc.text('Q#', margin, y);
+            doc.text('Question', margin + 12, y);
+            doc.text('Your Answer', margin + 100, y);
+            doc.text('Correct', margin + 130, y);
+            doc.text('Result', margin + 155, y);
+            y += 2;
+
+            doc.setDrawColor(220, 220, 220);
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 4;
+
+            doc.setFont('helvetica', 'normal');
             r.answers.forEach((a, i) => {
-                csv += `"${i + 1}. ${a.question}","${a.userAnswer}","${a.correctAnswer}",${a.correct ? 'Correct' : 'Wrong'}\n`;
+                if (y > 270) {
+                    doc.addPage();
+                    y = margin;
+                }
+
+                doc.setTextColor(60, 60, 60);
+                doc.text(`${i + 1}`, margin, y);
+                const qText = a.question.length > 45 ? a.question.substring(0, 45) + '...' : a.question;
+                doc.text(qText, margin + 12, y);
+                doc.text(String(a.userAnswer || '(blank)'), margin + 100, y);
+                doc.text(String(a.correctAnswer), margin + 130, y);
+
+                if (a.correct) {
+                    doc.setTextColor(76, 175, 80);
+                    doc.text('Correct', margin + 155, y);
+                } else {
+                    doc.setTextColor(244, 67, 54);
+                    doc.text('Wrong', margin + 155, y);
+                }
+                y += 5;
             });
+
+            y += 6;
         });
 
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `math-arena-session-${new Date().toISOString().slice(0, 10)}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
+        doc.save(`math-arena-session-${now.toISOString().slice(0, 10)}.pdf`);
     });
 
     /* ---- Init ---- */
