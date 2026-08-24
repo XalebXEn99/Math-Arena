@@ -874,99 +874,20 @@ body {
 .name-modal-btn.primary:hover { transform: translateY(-2px); box-shadow: 0 6px 0 rgba(0,0,0,0.2); }
 .name-modal-btn.primary:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.2); }
 
-/* ============================================
-   REPORTS VIEW
-   ============================================ */
-.reports-view {
-    max-width: 1100px; margin: 0 auto;
-    padding: 80px 20px 30px; width: 100%;
-}
-.reports-header { text-align: center; margin-bottom: 30px; }
-.reports-header h1 { font-size: 2.2rem; color: #fff; margin-bottom: 6px; }
-.reports-sub { color: rgba(255,255,255,0.6); font-size: 1rem; }
-.reports-filters {
-    display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;
-    background: rgba(255,255,255,0.08); border-radius: 16px;
-    padding: 20px 24px; border: 2px solid rgba(255,255,255,0.1);
-    margin-bottom: 24px;
-    justify-content: center;
-}
-.filter-group { display: flex; flex-direction: column; gap: 6px; min-width: 140px; }
-.filter-group label {
-    font-size: 0.75rem; color: rgba(255,255,255,0.6);
-    font-family: var(--font-main); font-weight: 600;
-}
-.filter-group input {
-    padding: 10px 14px; font-family: var(--font-main); font-size: 0.9rem;
-    border: 2px solid rgba(255,255,255,0.15); border-radius: 10px;
-    background: rgba(255,255,255,0.06); color: #fff; outline: none;
-    transition: border-color 0.2s;
-}
-.filter-group input:focus { border-color: var(--gold); }
-.filter-group input::placeholder { color: rgba(255,255,255,0.3); }
-.filter-btn {
-    padding: 10px 20px; border: 2px solid; border-radius: 10px;
+/* Session download button */
+.session-download-btn {
+    position: fixed; bottom: 20px; right: 20px;
+    padding: 12px 20px;
+    background: var(--btn-func-bg); border: 3px solid var(--btn-func-border);
+    color: #fff; border-radius: 12px;
     font-family: var(--font-main); font-size: 0.85rem; font-weight: 600;
-    cursor: pointer; transition: all 0.15s;
-    background: var(--green); border-color: #4caf50; color: #fff;
+    cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    transition: all 0.2s; z-index: 100;
+    display: none;
 }
-.filter-btn:hover { transform: translateY(-1px); }
-.filter-btn.secondary { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); }
-.filter-btn.secondary:hover { background: rgba(255,255,255,0.15); }
-.filter-btn.download { background: var(--btn-func-bg); border-color: var(--btn-func-border); }
-.reports-summary {
-    color: rgba(255,255,255,0.8); font-size: 0.95rem;
-    margin-bottom: 16px; padding: 12px 16px;
-    background: rgba(255,255,255,0.05); border-radius: 10px;
-    text-align: center; font-weight: 500;
-}
-.reports-table-wrap {
-    background: rgba(255,255,255,0.06); border-radius: 16px;
-    border: 2px solid rgba(255,255,255,0.08); overflow: auto;
-    max-height: 60vh;
-}
-.reports-table {
-    width: 100%; border-collapse: collapse;
-    font-family: var(--font-main); font-size: 0.85rem;
-}
-.reports-table thead {
-    background: rgba(255,255,255,0.08);
-    position: sticky; top: 0; z-index: 1;
-}
-.reports-table th {
-    padding: 12px 14px; text-align: left; color: var(--gold);
-    font-weight: 600; font-size: 0.8rem; letter-spacing: 0.5px;
-    border-bottom: 2px solid rgba(255,255,255,0.1);
-}
-.reports-table td {
-    padding: 10px 14px; color: rgba(255,255,255,0.8);
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-}
-.reports-table tbody tr:hover { background: rgba(255,255,255,0.03); }
-.reports-table .score-good { color: var(--green); font-weight: 600; }
-.reports-table .score-bad { color: var(--red); font-weight: 600; }
-.reports-table .score-mid { color: var(--gold); font-weight: 600; }
-.reports-back-btn {
-    display: block; margin: 20px auto 0; padding: 12px 32px;
-    background: rgba(255,255,255,0.1); color: #fff; border: 2px solid rgba(255,255,255,0.15);
-    border-radius: 12px; font-family: var(--font-main);
-    font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
-}
-.reports-back-btn:hover { background: rgba(255,255,255,0.15); }
-
-/* Footer */
-.site-footer {
-    text-align: center; padding: 30px 20px;
-    margin-top: 60px;
-}
-.footer-btn {
-    background: none; border: none;
-    color: rgba(255,255,255,0.08);
-    font-family: var(--font-main); font-size: 0.7rem;
-    cursor: default; transition: color 0.3s;
-    padding: 8px 16px;
-}
-.footer-btn:hover { color: rgba(255,255,255,0.08); }
+.session-download-btn.visible { display: block; }
+.session-download-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
+.session-download-btn:active { transform: translateY(1px); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
 
 /* ============================================
    RESPONSIVE
@@ -980,50 +901,7 @@ body {
     .table-picker { grid-template-columns: repeat(5, 1fr); gap: 5px; }
     .tp-btn { font-size: 0.82rem; padding: 8px 4px; }
     .carousel-tab { font-size: 0.85rem; padding: 10px 12px; }
-    
-    /* Reports view mobile */
-    .reports-view { padding: 80px 12px 12px; }
-    .reports-header h1 { font-size: 1.6rem; }
-    .reports-filters { 
-        flex-direction: column; 
-        padding: 12px; 
-        gap: 10px;
-        align-items: stretch;
-    }
-    .filter-group { 
-        width: 100%;
-        flex-direction: row;
-        align-items: center;
-        gap: 8px;
-    }
-    .filter-group label {
-        min-width: 50px;
-        margin-bottom: 0;
-    }
-    .filter-group input { 
-        flex: 1;
-        font-size: 0.85rem; 
-        padding: 8px 10px;
-    }
-    .filter-btn {
-        width: 100%;
-        padding: 10px;
-    }
-    .reports-summary {
-        font-size: 0.8rem;
-        text-align: center;
-    }
-    .reports-table-wrap {
-        overflow-x: auto;
-    }
-    .reports-table { 
-        font-size: 0.7rem;
-        min-width: 600px;
-    }
-    .reports-table th, .reports-table td { 
-        padding: 8px 6px;
-        white-space: nowrap;
-    }
+    .session-download-btn { font-size: 0.75rem; padding: 10px 16px; bottom: 12px; right: 12px; }
 }
 
 @media (max-width: 460px) {

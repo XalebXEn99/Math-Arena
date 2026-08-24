@@ -12,7 +12,6 @@
     const $gameView = document.getElementById('gameView');
     const $learnView = document.getElementById('learnView');
     const $calcView = document.getElementById('calcView');
-    const $reportsView = document.getElementById('reportsView');
     const $navTabs = document.querySelectorAll('.nav-tab');
 
     function switchView(view) {
@@ -20,7 +19,6 @@
         $gameView.classList.toggle('active', view === 'game');
         $learnView.classList.toggle('active', view === 'learn');
         $calcView.classList.toggle('active', view === 'calculator');
-        if ($reportsView) $reportsView.classList.remove('active');
     }
 
     document.querySelector('.top-nav').addEventListener('click', (e) => {
@@ -1328,97 +1326,32 @@
     initLearnView();
 
     /* =========================================================
-       REPORT SYSTEM
+       SESSION REPORT SYSTEM
        ========================================================= */
     let pendingAction = null;
+    let sessionReports = [];
+    let sessionTimeout = null;
+    const SESSION_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
     const $nameModal = document.getElementById('nameModal');
     const $nameModalInput = document.getElementById('nameModalInput');
     const $nameModalSave = document.getElementById('nameModalSave');
-    const $reportsBody = document.getElementById('reportsBody');
-    const $reportsSummary = document.getElementById('reportsSummary');
-    const $reportFilterName = document.getElementById('reportFilterName');
-    const $reportFilterFrom = document.getElementById('reportFilterFrom');
-    const $reportFilterTo = document.getElementById('reportFilterTo');
-    const $reportApplyFilter = document.getElementById('reportApplyFilter');
-    const $reportClearFilter = document.getElementById('reportClearFilter');
-    const $reportDownload = document.getElementById('reportDownload');
-    const $footerTrigger = document.getElementById('footerTrigger');
-    const $reportsBackBtn = document.getElementById('reportsBackBtn');
+    const $sessionDownloadBtn = document.getElementById('sessionDownloadBtn');
 
-    const REPORTS_KEY = 'mathArena_reports';
-    const GITHUB_REPO = 'XalebXEn99/Math-Arena';
-    const GITHUB_TOKEN = '';
-    const REPORTS_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/master/reports.json`;
-    const DISPATCH_URL = `https://api.github.com/repos/${GITHUB_REPO}/dispatches`;
-
-    // Cache reports locally for offline access
-    let reportsCache = null;
-
-    async function getReports() {
-        // Try to fetch from GitHub first
-        try {
-            const response = await fetch(REPORTS_URL + '?t=' + Date.now());
-            if (response.ok) {
-                const reports = await response.json();
-                reportsCache = reports;
-                // Update local cache
-                localStorage.setItem(REPORTS_KEY, JSON.stringify(reports));
-                return reports;
-            }
-        } catch (e) {
-            console.log('Could not fetch reports from GitHub, using cache');
-        }
-        // Fallback to localStorage cache
-        try { return JSON.parse(localStorage.getItem(REPORTS_KEY)) || []; }
-        catch { return []; }
+    function resetSessionTimeout() {
+        if (sessionTimeout) clearTimeout(sessionTimeout);
+        sessionTimeout = setTimeout(() => {
+            sessionReports = [];
+            updateDownloadButton();
+        }, SESSION_TIMEOUT_MS);
     }
 
-    async function triggerReportWorkflow(report) {
-        if (!GITHUB_TOKEN) {
-            console.warn('GitHub token not set. Report saved locally only.');
-            // Fallback to localStorage
-            const reports = getReportsSync();
-            reports.push(report);
-            localStorage.setItem(REPORTS_KEY, JSON.stringify(reports));
-            return false;
+    function updateDownloadButton() {
+        if (sessionReports.length > 0) {
+            $sessionDownloadBtn.classList.add('visible');
+        } else {
+            $sessionDownloadBtn.classList.remove('visible');
         }
-
-        try {
-            const encodedReport = encodeURIComponent(JSON.stringify(report));
-            const response = await fetch(DISPATCH_URL, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `token ${GITHUB_TOKEN}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    event_type: 'add-report',
-                    client_payload: { report: encodedReport }
-                })
-            });
-
-            if (response.status === 204) {
-                console.log('Report workflow triggered successfully');
-                // Also save to local cache immediately
-                const reports = getReportsSync();
-                reports.push(report);
-                localStorage.setItem(REPORTS_KEY, JSON.stringify(reports));
-                return true;
-            } else {
-                console.error('Failed to trigger workflow:', response.status, response.statusText);
-                return false;
-            }
-        } catch (e) {
-            console.error('Error triggering workflow:', e);
-            return false;
-        }
-    }
-
-    function getReportsSync() {
-        try { return JSON.parse(localStorage.getItem(REPORTS_KEY)) || []; }
-        catch { return []; }
     }
 
     function showNameModal() {
@@ -1469,7 +1402,6 @@
         const pct = Math.round((correct / total) * 100);
 
         const report = {
-            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
             name: name,
             date: new Date().toISOString(),
             mode: modeLabel,
@@ -1486,119 +1418,23 @@
             }))
         };
 
-        const reports = getReportsSync();
-        reports.push(report);
-        localStorage.setItem(REPORTS_KEY, JSON.stringify(reports));
-
-        // Trigger GitHub Actions workflow to save to shared database
-        triggerReportWorkflow(report);
+        sessionReports.push(report);
+        resetSessionTimeout();
+        updateDownloadButton();
     }
 
-    /* ---- Reports View ---- */
-    async function showReportsView() {
-        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-        $reportsView.classList.add('active');
-        $navTabs.forEach(t => t.classList.remove('active'));
-        await renderReports();
-    }
-
-    async function renderReports() {
-        const reports = await getReports();
-        const nameFilter = $reportFilterName.value.trim().toLowerCase();
-        const fromFilter = $reportFilterFrom.value;
-        const toFilter = $reportFilterTo.value;
-
-        let filtered = reports;
-        if (nameFilter) {
-            filtered = filtered.filter(r => r.name.toLowerCase().includes(nameFilter));
-        }
-        if (fromFilter) {
-            const fromDate = new Date(fromFilter);
-            fromDate.setHours(0, 0, 0, 0);
-            filtered = filtered.filter(r => new Date(r.date) >= fromDate);
-        }
-        if (toFilter) {
-            const toDate = new Date(toFilter);
-            toDate.setHours(23, 59, 59, 999);
-            filtered = filtered.filter(r => new Date(r.date) <= toDate);
-        }
-
-        // Sort by date descending
-        filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        // Summary
-        const totalSessions = filtered.length;
-        const totalQuestions = filtered.reduce((s, r) => s + r.total, 0);
-        const totalCorrect = filtered.reduce((s, r) => s + r.score, 0);
-        const avgPct = totalSessions > 0 ? Math.round(filtered.reduce((s, r) => s + r.pct, 0) / totalSessions) : 0;
-        $reportsSummary.textContent = `${totalSessions} session${totalSessions !== 1 ? 's' : ''} | ${totalQuestions} questions | ${totalCorrect} correct | ${avgPct}% average`;
-
-        // Table rows
-        let html = '';
-        filtered.forEach(r => {
-            const d = new Date(r.date);
-            const dateStr = d.toLocaleDateString('en-ZA', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            const timeStr = d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
-            const scoreCls = r.pct >= 90 ? 'score-good' : r.pct >= 60 ? 'score-mid' : 'score-bad';
-            const time = formatTime(r.time);
-            const details = `${r.score}/${r.total}`;
-            html += `<tr>
-                <td>${dateStr} ${timeStr}</td>
-                <td>${escapeHtml(r.name)}</td>
-                <td>${escapeHtml(r.mode)}</td>
-                <td>${escapeHtml(r.topic)}</td>
-                <td class="${scoreCls}">${r.pct}%</td>
-                <td>${time}</td>
-                <td>${details}</td>
-            </tr>`;
-        });
-        $reportsBody.innerHTML = html || '<tr><td colspan="7" style="text-align:center;color:rgba(255,255,255,0.4);padding:24px;">No reports found</td></tr>';
-    }
-
-    function escapeHtml(str) {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
-
-    $reportApplyFilter.addEventListener('click', renderReports);
-    $reportClearFilter.addEventListener('click', () => {
-        $reportFilterName.value = '';
-        $reportFilterFrom.value = '';
-        $reportFilterTo.value = '';
-        renderReports();
-    });
-
-    $reportDownload.addEventListener('click', async () => {
-        const reports = await getReports();
-        const nameFilter = $reportFilterName.value.trim().toLowerCase();
-        const fromFilter = $reportFilterFrom.value;
-        const toFilter = $reportFilterTo.value;
-
-        let filtered = reports;
-        if (nameFilter) filtered = filtered.filter(r => r.name.toLowerCase().includes(nameFilter));
-        if (fromFilter) {
-            const fromDate = new Date(fromFilter); fromDate.setHours(0, 0, 0, 0);
-            filtered = filtered.filter(r => new Date(r.date) >= fromDate);
-        }
-        if (toFilter) {
-            const toDate = new Date(toFilter); toDate.setHours(23, 59, 59, 999);
-            filtered = filtered.filter(r => new Date(r.date) <= toDate);
-        }
-        filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        if (filtered.length === 0) return;
+    $sessionDownloadBtn.addEventListener('click', () => {
+        if (sessionReports.length === 0) return;
 
         let csv = 'Date,Name,Mode,Topic,Score,Total,Percentage,Time\n';
-        filtered.forEach(r => {
+        sessionReports.forEach(r => {
             const d = new Date(r.date);
             const dateStr = d.toLocaleDateString('en-ZA') + ' ' + d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
             csv += `"${dateStr}","${r.name}","${r.mode}","${r.topic}",${r.score},${r.total},${r.pct}%,"${formatTime(r.time)}"\n`;
         });
 
-        // Add detailed breakdown per session
         csv += '\n\nDetailed Answers\n';
-        filtered.forEach(r => {
+        sessionReports.forEach(r => {
             const d = new Date(r.date);
             csv += `\n${d.toLocaleDateString('en-ZA')} - ${r.name} - ${r.mode}: ${r.topic}\n`;
             csv += 'Question,Your Answer,Correct Answer,Result\n';
@@ -1611,20 +1447,9 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `math-arena-reports-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.download = `math-arena-session-${new Date().toISOString().slice(0, 10)}.csv`;
         a.click();
         URL.revokeObjectURL(url);
-    });
-
-    $reportsBackBtn.addEventListener('click', () => {
-        $reportsView.classList.remove('active');
-        $gameView.classList.add('active');
-        $navTabs.forEach(t => t.classList.toggle('active', t.dataset.view === 'game'));
-    });
-
-    /* ---- Footer button ---- */
-    $footerTrigger.addEventListener('click', () => {
-        showReportsView();
     });
 
     /* ---- Init ---- */
