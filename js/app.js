@@ -1391,7 +1391,7 @@
         } else if (s.mode === 'topic-practice') {
             modeLabel = 'Practice';
             const topic = learnCategories.flatMap(c => c.topics).find(t => t.id === s.practiceTopic);
-            topicLabel = topic ? topic.title : s.practiceTopic || '';
+            topicLabel = (topic && topic.title) ? topic.title : (s.practiceTopic ? String(s.practiceTopic) : 'Topic Practice');
         } else {
             const opLabels = { mixed: 'All Mixed', '+': 'Addition', '-': 'Subtraction', '*': 'Multiplication', '/': 'Division' };
             topicLabel = opLabels[s.operation] || s.operation || '';
