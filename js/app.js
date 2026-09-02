@@ -999,11 +999,11 @@
     }
 
     // Quadrilateral with angles SVG
-    function svgQuadAngles(a1, a2, a3, a4) {
+    function svgQuadAngles(a1, a2, a3) {
         const w = 240, h = 180;
         const pts = [[50,140],[200,140],[180,40],[60,50]];
         let s = svgPoly(pts.map(p=>p.join(',')).join(' '), 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.7)');
-        const labels = [`${a1}\u00B0`,`${a2}\u00B0`,`${a3}\u00B0`,`${a4}\u00B0`];
+        const labels = [`${a1}\u00B0`,`${a2}\u00B0`,`${a3}\u00B0`,'x'];
         const colors = ['#ffc107','#4caf50','#64b5f6','#ef5350'];
         const offsets = [[-16,10],[16,10],[16,-8],[-16,-8]];
         pts.forEach((p,i) => {
@@ -1026,7 +1026,7 @@
         const actualS2 = s2 * sc;
         const ox = 150;
         s += svgPoly(`${ox},110 ${ox+actualS2},110 ${ox+actualS2/2},${110-maxH}`, 'rgba(255,255,255,0.03)', '#4caf50');
-        s += svgText(ox+actualS2/2, 120, side*scale, 11, '#4caf50');
+        s += svgText(ox+actualS2/2, 120, 'x', 11, '#4caf50');
         // Scale label
         s += svgText(w/2, 20, `Scale factor: ${scale}`, 12, 'rgba(255,255,255,0.6)');
         return svgWrap(w, h, s);
@@ -1071,11 +1071,11 @@
         const px = cx + origX * unit, py = cy - origY * unit;
         s += `<circle cx="${px}" cy="${py}" r="5" fill="#ffc107"/>`;
         s += svgText(px + 10, py - 8, `(${origX},${origY})`, 9, '#ffc107');
-        // Result point
+        // Result point (hide coordinates, show question mark)
         let rx, ry, label;
-        if (type === 0) { rx = origX; ry = -origY; label = `(${rx},${ry})`; }
-        else if (type === 1) { rx = origX + (dx||0); ry = origY + (dy||0); label = `(${rx},${ry})`; }
-        else { rx = -origX; ry = -origY; label = `(${rx},${ry})`; }
+        if (type === 0) { rx = origX; ry = -origY; label = '(?,?)'; }
+        else if (type === 1) { rx = origX + (dx||0); ry = origY + (dy||0); label = '(?,?)'; }
+        else { rx = -origX; ry = -origY; label = '(?,?)'; }
         const rpx = cx + rx * unit, rpy = cy - ry * unit;
         s += `<circle cx="${rpx}" cy="${rpy}" r="5" fill="#4caf50"/>`;
         s += svgText(rpx + 10, rpy - 8, label, 9, '#4caf50');
@@ -1359,7 +1359,7 @@
         const a1 = randInt(60, 120), a2 = randInt(60, 120), a3 = randInt(60, 120);
         const a4 = 360 - a1 - a2 - a3;
         if (a4 <= 0) return genQuadQ();
-        return { text: `Find x (the fourth angle)`, answer: a4, svg: svgQuadAngles(a1, a2, a3, a4), detail: `Quadrilateral angles: ${a1}\u00B0, ${a2}\u00B0, ${a3}\u00B0, x` };
+        return { text: `Find x (the fourth angle)`, answer: a4, svg: svgQuadAngles(a1, a2, a3), detail: `Quadrilateral angles: ${a1}\u00B0, ${a2}\u00B0, ${a3}\u00B0, x` };
     }
 
     function genSimilarityQ() {
