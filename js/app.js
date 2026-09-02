@@ -2001,6 +2001,8 @@
                     categoryName: learnCategories.find(c => c.topics.some(t => t.id === tid))?.name || '',
                     text: q.text,
                     answer: q.answer,
+                    svg: q.svg || null,
+                    detail: q.detail || null,
                     marks: marks,
                     index: questions.length
                 });
