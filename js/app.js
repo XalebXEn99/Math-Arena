@@ -514,13 +514,6 @@
     function showResults() {
         showScreen($resultsScreen);
 
-        // Show name modal to save results
-        setTimeout(() => {
-            if (typeof showNameModal === 'function') {
-                showNameModal();
-            }
-        }, 500);
-
         const total = game.questions.length;
         const correct = game.score;
         const wrong = total - correct;
@@ -562,6 +555,17 @@
             </div>`;
         });
         $reviewList.innerHTML = reviewHtml;
+
+        // Show name modal after a short delay
+        setTimeout(() => {
+            const modal = document.getElementById('nameModal');
+            const input = document.getElementById('nameModalInput');
+            if (modal && input) {
+                input.value = '';
+                modal.classList.add('open');
+                setTimeout(() => input.focus(), 100);
+            }
+        }, 500);
     }
 
     /* =========================================================
