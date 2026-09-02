@@ -512,6 +512,10 @@
     }
 
     function showResults() {
+        // Ensure game view is active
+        if (!$gameView.classList.contains('active')) {
+            $gameView.classList.add('active');
+        }
         showScreen($resultsScreen);
 
         const total = game.questions.length;
