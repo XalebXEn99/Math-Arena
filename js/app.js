@@ -518,49 +518,54 @@
         }
         showScreen($resultsScreen);
 
-        const total = game.questions.length;
-        const correct = game.score;
-        const wrong = total - correct;
-        const pct = Math.round((correct / total) * 100);
-        const avgTime = total > 0 ? (game.elapsed / total).toFixed(1) : '0.0';
+        try {
+            const total = game.questions.length;
+            const correct = game.score;
+            const wrong = total - correct;
+            const pct = Math.round((correct / total) * 100);
+            const avgTime = total > 0 ? (game.elapsed / total).toFixed(1) : '0.0';
 
-        $scorePct.textContent = `${pct}%`;
-        $statCorrect.textContent = correct;
-        $statWrong.textContent = wrong;
-        $statTime.textContent = formatTime(game.elapsed);
-        $statAvg.textContent = `${avgTime}s`;
+            $scorePct.textContent = `${pct}%`;
+            $statCorrect.textContent = correct;
+            $statWrong.textContent = wrong;
+            $statTime.textContent = formatTime(game.elapsed);
+            $statAvg.textContent = `${avgTime}s`;
 
-        // Color the score circle based on performance
-        const circle = document.getElementById('scoreCircle');
-        if (pct >= 90) {
-            circle.style.borderColor = 'var(--green)';
-            $scorePct.style.color = 'var(--green)';
-        } else if (pct >= 60) {
-            circle.style.borderColor = 'var(--gold)';
-            $scorePct.style.color = 'var(--gold)';
-        } else {
-            circle.style.borderColor = 'var(--red)';
-            $scorePct.style.color = 'var(--red)';
+            // Color the score circle based on performance
+            const circle = document.getElementById('scoreCircle');
+            if (pct >= 90) {
+                circle.style.borderColor = 'var(--green)';
+                $scorePct.style.color = 'var(--green)';
+            } else if (pct >= 60) {
+                circle.style.borderColor = 'var(--gold)';
+                $scorePct.style.color = 'var(--gold)';
+            } else {
+                circle.style.borderColor = 'var(--red)';
+                $scorePct.style.color = 'var(--red)';
+            }
+
+            // Review list
+            let reviewHtml = '';
+            if (game.answers && game.answers.length > 0) {
+                game.answers.forEach((a, i) => {
+                    const cls = a.correct ? 'right' : 'wrong';
+                    const userFrac = fracToHTML(String(a.userAnswer));
+                    const correctFrac = fracToHTML(String(a.correctAnswer));
+                    const questionFrac = fracToHTML(a.question);
+                    const display = a.correct
+                        ? userFrac
+                        : `${userFrac} <span class="ri-was">(was</span> ${correctFrac}<span class="ri-was">)</span>`;
+                    reviewHtml += `<div class="review-item">
+                        <span class="ri-q">${i + 1}. ${questionFrac} =</span>
+                        <span class="ri-a ${cls}">${display}</span>
+                    </div>`;
+                });
+            }
+            $reviewList.innerHTML = reviewHtml;
+        } catch (e) {
+            // If there's an error, at least the results screen is visible
+            console.error('Error in showResults:', e);
         }
-
-        // Review list
-        let reviewHtml = '';
-        if (game.answers && game.answers.length > 0) {
-            game.answers.forEach((a, i) => {
-                const cls = a.correct ? 'right' : 'wrong';
-                const userFrac = fracToHTML(String(a.userAnswer));
-                const correctFrac = fracToHTML(String(a.correctAnswer));
-                const questionFrac = fracToHTML(a.question);
-                const display = a.correct
-                    ? userFrac
-                    : `${userFrac} <span class="ri-was">(was</span> ${correctFrac}<span class="ri-was">)</span>`;
-                reviewHtml += `<div class="review-item">
-                    <span class="ri-q">${i + 1}. ${questionFrac} =</span>
-                    <span class="ri-a ${cls}">${display}</span>
-                </div>`;
-            });
-        }
-        $reviewList.innerHTML = reviewHtml;
 
         // Show name modal immediately
         const modal = document.getElementById('nameModal');
