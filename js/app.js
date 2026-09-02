@@ -12,13 +12,22 @@
     const $gameView = document.getElementById('gameView');
     const $learnView = document.getElementById('learnView');
     const $calcView = document.getElementById('calcView');
+    const $testView = document.getElementById('testView');
     const $navTabs = document.querySelectorAll('.nav-tab');
 
+    let testInProgress = false;
+
     function switchView(view) {
+        if (testInProgress && view !== 'test') {
+            if (!confirm('You have a test in progress. Leaving will submit your test automatically. Continue?')) return;
+            autoSubmitTest();
+        }
+        testInProgress = false;
         $navTabs.forEach(t => t.classList.toggle('active', t.dataset.view === view));
         $gameView.classList.toggle('active', view === 'game');
         $learnView.classList.toggle('active', view === 'learn');
         $calcView.classList.toggle('active', view === 'calculator');
+        $testView.classList.toggle('active', view === 'test');
     }
 
     document.querySelector('.top-nav').addEventListener('click', (e) => {
@@ -1545,6 +1554,547 @@
 
         doc.save(`math-arena-session-${now.toISOString().slice(0, 10)}.pdf`);
     });
+
+    /* =========================================================
+       TEST ENGINE
+       ========================================================= */
+
+    // CAPS-aligned mark allocation per question type
+    // 1 mark: simple recall / one-step calc
+    // 2 marks: two-step calculation
+    // 3 marks: multi-step / application
+    // 4 marks: complex word problem
+    const MARK_LEVELS = [1, 2, 3, 4];
+
+    // Test state
+    let testState = {
+        selectedTopics: [],
+        timeLimit: 45,
+        studentName: '',
+        questions: [],
+        answers: [],
+        currentQ: 0,
+        timerInterval: null,
+        timeRemaining: 0,
+        startTime: null,
+        results: null
+    };
+
+    // DOM refs
+    const $testSetupScreen = document.getElementById('testSetupScreen');
+    const $testNameScreen = document.getElementById('testNameScreen');
+    const $testInProgressScreen = document.getElementById('testInProgressScreen');
+    const $testResultsScreen = document.getElementById('testResultsScreen');
+    const $testTopicGrid = document.getElementById('testTopicGrid');
+    const $testSummaryInfo = document.getElementById('testSummaryInfo');
+    const $testStartBtn = document.getElementById('testStartBtn');
+    const $testNameInput = document.getElementById('testNameInput');
+    const $testNameBackBtn = document.getElementById('testNameBackBtn');
+    const $testNameStartBtn = document.getElementById('testNameStartBtn');
+    const $testTimer = document.getElementById('testTimer');
+    const $testProgress = document.getElementById('testProgress');
+    const $testMarks = document.getElementById('testMarks');
+    const $testQuestionArea = document.getElementById('testQuestionArea');
+    const $testPrevBtn = document.getElementById('testPrevBtn');
+    const $testNextBtn = document.getElementById('testNextBtn');
+    const $testQuestionNav = document.getElementById('testQuestionNav');
+    const $testSubmitBtn = document.getElementById('testSubmitBtn');
+    const $testScorePct = document.getElementById('testScorePct');
+    const $testScoreDetail = document.getElementById('testScoreDetail');
+    const $testResultsName = document.getElementById('testResultsName');
+    const $testResultsDate = document.getElementById('testResultsDate');
+    const $testBreakdown = document.getElementById('testBreakdown');
+    const $testDownloadBtn = document.getElementById('testDownloadBtn');
+    const $testNewBtn = document.getElementById('testNewBtn');
+
+    function showTestScreen(screenId) {
+        [$testSetupScreen, $testNameScreen, $testInProgressScreen, $testResultsScreen].forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+
+    /* ---- Test Setup ---- */
+    function buildTestTopicGrid() {
+        let html = '';
+        learnCategories.forEach(cat => {
+            html += `<div class="test-topic-cat-label">${cat.name}</div>`;
+            cat.topics.forEach(t => {
+                html += `<button class="test-topic-chip" data-testtopic="${t.id}">${t.name}</button>`;
+            });
+        });
+        $testTopicGrid.innerHTML = html;
+    }
+
+    $testTopicGrid.addEventListener('click', (e) => {
+        const chip = e.target.closest('.test-topic-chip');
+        if (!chip) return;
+        chip.classList.toggle('selected');
+        const topicId = chip.dataset.testtopic;
+        const idx = testState.selectedTopics.indexOf(topicId);
+        if (idx >= 0) testState.selectedTopics.splice(idx, 1);
+        else testState.selectedTopics.push(topicId);
+        updateTestSummary();
+    });
+
+    document.querySelectorAll('.test-time-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.test-time-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            testState.timeLimit = parseInt(btn.dataset.minutes);
+            updateTestSummary();
+        });
+    });
+
+    function getQuestionsPerTopic(topicCount) {
+        // Adjust questions per topic based on how many topics selected
+        if (topicCount <= 2) return 5;
+        if (topicCount <= 4) return 4;
+        if (topicCount <= 6) return 3;
+        return 2;
+    }
+
+    function getMarkForQuestion(topicId, qIndex, totalForTopic) {
+        // Distribute marks across difficulty levels
+        // First question: 1 mark (warm-up), middle: 2-3 marks, last: 3-4 marks
+        if (totalForTopic <= 2) return qIndex === 0 ? 2 : 3;
+        if (qIndex === 0) return 1;
+        if (qIndex === totalForTopic - 1) return totalForTopic >= 4 ? 4 : 3;
+        return 2 + (qIndex % 2);
+    }
+
+    function updateTestSummary() {
+        const count = testState.selectedTopics.length;
+        if (count === 0) {
+            $testSummaryInfo.innerHTML = '<p>Select at least one topic to begin</p>';
+            $testStartBtn.disabled = true;
+            return;
+        }
+
+        const qPerTopic = getQuestionsPerTopic(count);
+        let totalMarks = 0;
+        const topicNames = [];
+
+        testState.selectedTopics.forEach(tid => {
+            const topic = learnCategories.flatMap(c => c.topics).find(t => t.id === tid);
+            if (topic) topicNames.push(topic.name);
+            for (let i = 0; i < qPerTopic; i++) {
+                totalMarks += getMarkForQuestion(tid, i, qPerTopic);
+            }
+        });
+
+        const totalQs = count * qPerTopic;
+        const hrs = Math.floor(testState.timeLimit / 60);
+        const mins = testState.timeLimit % 60;
+        const timeStr = hrs > 0 ? `${hrs}h ${mins > 0 ? mins + 'min' : ''}` : `${mins} min`;
+
+        $testSummaryInfo.innerHTML = `
+            <div class="summary-stat"><span class="summary-label">Topics</span><span class="summary-value">${count}</span></div>
+            <div class="summary-stat"><span class="summary-label">Questions</span><span class="summary-value">${totalQs}</span></div>
+            <div class="summary-stat"><span class="summary-label">Total Marks</span><span class="summary-value">${totalMarks}</span></div>
+            <div class="summary-stat"><span class="summary-label">Time Limit</span><span class="summary-value">${timeStr}</span></div>
+            <div class="summary-stat"><span class="summary-label">Topics Selected</span><span class="summary-value">${topicNames.join(', ')}</span></div>
+        `;
+        $testStartBtn.disabled = false;
+    }
+
+    $testStartBtn.addEventListener('click', () => {
+        if (testState.selectedTopics.length === 0) return;
+        showTestScreen('testNameScreen');
+        $testNameInput.value = '';
+        setTimeout(() => $testNameInput.focus(), 100);
+    });
+
+    $testNameBackBtn.addEventListener('click', () => {
+        showTestScreen('testSetupScreen');
+    });
+
+    $testNameStartBtn.addEventListener('click', () => {
+        const name = $testNameInput.value.trim();
+        if (!name) { $testNameInput.focus(); return; }
+        testState.studentName = name;
+        beginTest();
+    });
+
+    $testNameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') $testNameStartBtn.click();
+    });
+
+    /* ---- Generate Test Questions ---- */
+    function generateTestQuestions() {
+        const questions = [];
+        const qPerTopic = getQuestionsPerTopic(testState.selectedTopics.length);
+
+        testState.selectedTopics.forEach((tid, topicIdx) => {
+            const topic = learnCategories.flatMap(c => c.topics).find(t => t.id === tid);
+            const generator = practiceGenerators[tid];
+            if (!topic || !generator) return;
+
+            for (let i = 0; i < qPerTopic; i++) {
+                const q = generator();
+                const marks = getMarkForQuestion(tid, i, qPerTopic);
+                questions.push({
+                    topicId: tid,
+                    topicName: topic.name,
+                    categoryName: learnCategories.find(c => c.topics.some(t => t.id === tid))?.name || '',
+                    text: q.text,
+                    answer: q.answer,
+                    marks: marks,
+                    index: questions.length
+                });
+            }
+        });
+
+        // Shuffle questions to mix topics
+        for (let i = questions.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [questions[i], questions[j]] = [questions[j], questions[i]];
+            questions[i].index = i;
+            questions[j].index = j;
+        }
+
+        return questions;
+    }
+
+    /* ---- Begin Test ---- */
+    function beginTest() {
+        testState.questions = generateTestQuestions();
+        testState.answers = new Array(testState.questions.length).fill(null);
+        testState.currentQ = 0;
+        testState.timeRemaining = testState.timeLimit * 60;
+        testState.startTime = Date.now();
+        testInProgress = true;
+
+        showTestScreen('testInProgressScreen');
+        buildQuestionNav();
+        renderCurrentQuestion();
+        startTimer();
+    }
+
+    function startTimer() {
+        updateTimerDisplay();
+        testState.timerInterval = setInterval(() => {
+            testState.timeRemaining--;
+            updateTimerDisplay();
+            if (testState.timeRemaining <= 0) {
+                clearInterval(testState.timerInterval);
+                submitTest(true);
+            }
+        }, 1000);
+    }
+
+    function updateTimerDisplay() {
+        const t = Math.max(0, testState.timeRemaining);
+        const hrs = Math.floor(t / 3600);
+        const mins = Math.floor((t % 3600) / 60);
+        const secs = t % 60;
+        $testTimer.textContent = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+        $testTimer.classList.remove('warning', 'danger');
+        if (t <= 60) $testTimer.classList.add('danger');
+        else if (t <= 300) $testTimer.classList.add('warning');
+    }
+
+    function buildQuestionNav() {
+        let html = '';
+        testState.questions.forEach((q, i) => {
+            html += `<button class="test-q-dot${i === 0 ? ' current' : ''}" data-qidx="${i}">${i + 1}</button>`;
+        });
+        $testQuestionNav.innerHTML = html;
+    }
+
+    function renderCurrentQuestion() {
+        const q = testState.questions[testState.currentQ];
+        const totalMarks = testState.questions.reduce((s, qq) => s + qq.marks, 0);
+        const answeredMarks = testState.answers.reduce((s, a, i) => s + (a !== null ? testState.questions[i].marks : 0), 0);
+
+        $testProgress.textContent = `Question ${testState.currentQ + 1} of ${testState.questions.length}`;
+        $testMarks.textContent = `${answeredMarks} / ${totalMarks} marks answered`;
+
+        $testQuestionArea.innerHTML = `
+            <div class="test-q-number">Question ${testState.currentQ + 1}</div>
+            <div class="test-q-topic">${q.categoryName} - ${q.topicName}</div>
+            <div class="test-q-text">${q.text}</div>
+            <div class="test-q-marks">[${q.marks} mark${q.marks !== 1 ? 's' : ''}]</div>
+            <input type="text" class="test-q-input" id="testQInput" placeholder="Your answer" autocomplete="off" value="${testState.answers[testState.currentQ] !== null ? testState.answers[testState.currentQ] : ''}">
+        `;
+
+        const $input = document.getElementById('testQInput');
+        $input.addEventListener('input', () => {
+            testState.answers[testState.currentQ] = $input.value.trim();
+            updateQuestionNavDots();
+            updateHudMarks();
+        });
+        $input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                if (testState.currentQ < testState.questions.length - 1) {
+                    testState.currentQ++;
+                    renderCurrentQuestion();
+                }
+            }
+        });
+        setTimeout(() => $input.focus(), 50);
+
+        $testPrevBtn.disabled = testState.currentQ === 0;
+        $testNextBtn.disabled = testState.currentQ === testState.questions.length - 1;
+
+        updateQuestionNavDots();
+    }
+
+    function updateHudMarks() {
+        const totalMarks = testState.questions.reduce((s, qq) => s + qq.marks, 0);
+        const answeredMarks = testState.answers.reduce((s, a, i) => s + (a !== null && a !== '' ? testState.questions[i].marks : 0), 0);
+        $testMarks.textContent = `${answeredMarks} / ${totalMarks} marks answered`;
+    }
+
+    function updateQuestionNavDots() {
+        $testQuestionNav.querySelectorAll('.test-q-dot').forEach((dot, i) => {
+            dot.classList.remove('current', 'answered');
+            if (i === testState.currentQ) dot.classList.add('current');
+            if (testState.answers[i] !== null && testState.answers[i] !== '') dot.classList.add('answered');
+        });
+    }
+
+    $testQuestionNav.addEventListener('click', (e) => {
+        const dot = e.target.closest('.test-q-dot');
+        if (!dot) return;
+        testState.currentQ = parseInt(dot.dataset.qidx);
+        renderCurrentQuestion();
+    });
+
+    $testPrevBtn.addEventListener('click', () => {
+        if (testState.currentQ > 0) {
+            testState.currentQ--;
+            renderCurrentQuestion();
+        }
+    });
+
+    $testNextBtn.addEventListener('click', () => {
+        if (testState.currentQ < testState.questions.length - 1) {
+            testState.currentQ++;
+            renderCurrentQuestion();
+        }
+    });
+
+    $testSubmitBtn.addEventListener('click', () => {
+        const unanswered = testState.answers.filter(a => a === null || a === '').length;
+        const msg = unanswered > 0
+            ? `You have ${unanswered} unanswered question${unanswered !== 1 ? 's' : ''}. Submit anyway?`
+            : 'Are you sure you want to submit your test?';
+        if (confirm(msg)) submitTest(false);
+    });
+
+    /* ---- Auto-submit (timeout or nav away) ---- */
+    function autoSubmitTest() {
+        if (testState.timerInterval) clearInterval(testState.timerInterval);
+        if (testState.questions.length > 0 && testState.startTime) {
+            markTest();
+        }
+        testInProgress = false;
+    }
+
+    /* ---- Mark and Show Results ---- */
+    function submitTest(timedOut) {
+        if (testState.timerInterval) clearInterval(testState.timerInterval);
+        markTest();
+        if (timedOut) alert('Time is up! Your test has been submitted.');
+    }
+
+    function markTest() {
+        const totalMarks = testState.questions.reduce((s, q) => s + q.marks, 0);
+        let earnedMarks = 0;
+        const markedQuestions = testState.questions.map((q, i) => {
+            const userAnswer = testState.answers[i];
+            const isCorrect = checkAnswer(userAnswer, q.answer);
+            const marksEarned = isCorrect ? q.marks : 0;
+            earnedMarks += marksEarned;
+            return {
+                ...q,
+                userAnswer: userAnswer || '(unanswered)',
+                correctAnswer: q.answer,
+                isCorrect: isCorrect,
+                marksEarned: marksEarned,
+                wasAnswered: userAnswer !== null && userAnswer !== ''
+            };
+        });
+
+        const pct = totalMarks > 0 ? Math.round((earnedMarks / totalMarks) * 100) : 0;
+        const elapsed = Math.round((Date.now() - testState.startTime) / 1000);
+
+        testState.results = {
+            studentName: testState.studentName,
+            date: new Date().toISOString(),
+            questions: markedQuestions,
+            totalMarks: totalMarks,
+            earnedMarks: earnedMarks,
+            percentage: pct,
+            timeLimit: testState.timeLimit,
+            timeTaken: elapsed,
+            timedOut: testState.timeRemaining <= 0
+        };
+
+        testInProgress = false;
+        showResults();
+    }
+
+    function checkAnswer(userAnswer, correctAnswer) {
+        if (userAnswer === null || userAnswer === '') return false;
+        const normalize = (s) => String(s).trim().toLowerCase().replace(/\s+/g, '');
+        const ua = normalize(userAnswer);
+        const ca = normalize(correctAnswer);
+        if (ua === ca) return true;
+        // Try numeric comparison
+        const numU = parseFloat(ua.replace(/,/g, ''));
+        const numC = parseFloat(String(ca).replace(/,/g, ''));
+        if (!isNaN(numU) && !isNaN(numC) && Math.abs(numU - numC) < 0.01) return true;
+        return false;
+    }
+
+    function showResults() {
+        const r = testState.results;
+        showTestScreen('testResultsScreen');
+
+        const scoreCls = r.percentage >= 75 ? '' : r.percentage >= 50 ? 'style="border-color: var(--gold)"' : 'style="border-color: var(--red)"';
+        document.getElementById('testScoreCircle').setAttribute('style', scoreCls);
+        $testScorePct.textContent = `${r.percentage}%`;
+        $testScoreDetail.textContent = `${r.earnedMarks} / ${r.totalMarks}`;
+        $testResultsName.textContent = r.studentName;
+        const d = new Date(r.date);
+        $testResultsDate.textContent = d.toLocaleDateString('en-ZA', { day: '2-digit', month: 'long', year: 'numeric' }) + ' at ' + d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+
+        // Build breakdown by topic
+        const byTopic = {};
+        r.questions.forEach(q => {
+            if (!byTopic[q.topicName]) byTopic[q.topicName] = [];
+            byTopic[q.topicName].push(q);
+        });
+
+        let html = '';
+        Object.entries(byTopic).forEach(([topic, qs]) => {
+            const topicMarks = qs.reduce((s, q) => s + q.marks, 0);
+            const topicEarned = qs.reduce((s, q) => s + q.marksEarned, 0);
+            html += `<div class="test-breakdown-topic">
+                <h3>${topic} (${topicEarned}/${topicMarks})</h3>`;
+            qs.forEach(q => {
+                const resultCls = !q.wasAnswered ? 'unanswered' : q.isCorrect ? 'correct' : 'wrong';
+                const resultText = !q.wasAnswered ? '0/' + q.marks : q.isCorrect ? q.marks + '/' + q.marks : '0/' + q.marks;
+                html += `<div class="test-breakdown-q">
+                    <span>Q${q.index + 1}: ${q.text.substring(0, 50)}${q.text.length > 50 ? '...' : ''}</span>
+                    <span class="q-result ${resultCls}">${resultText}</span>
+                </div>`;
+            });
+            html += '</div>';
+        });
+        $testBreakdown.innerHTML = html;
+    }
+
+    /* ---- Test PDF Download ---- */
+    $testDownloadBtn.addEventListener('click', () => {
+        if (!testState.results) return;
+        const r = testState.results;
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const pw = doc.internal.pageSize.getWidth();
+        const margin = 20;
+        let y = margin;
+
+        // Header
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(40, 40, 40);
+        doc.text('Math Arena - Test Report', pw / 2, y, { align: 'center' });
+        y += 10;
+
+        // Student info
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(80, 80, 80);
+        const d = new Date(r.date);
+        doc.text(`Student: ${r.studentName}`, margin, y);
+        doc.text(`Date: ${d.toLocaleDateString('en-ZA')}`, pw - margin, y, { align: 'right' });
+        y += 6;
+        doc.text(`Time Limit: ${r.timeLimit} minutes`, margin, y);
+        const takenMins = Math.floor(r.timeTaken / 60);
+        const takenSecs = r.timeTaken % 60;
+        doc.text(`Time Taken: ${takenMins}m ${takenSecs}s`, pw - margin, y, { align: 'right' });
+        y += 8;
+
+        // Score box
+        doc.setFillColor(240, 240, 240);
+        doc.rect(margin, y, pw - margin * 2, 24, 'F');
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        const scoreColor = r.percentage >= 75 ? [76, 175, 80] : r.percentage >= 50 ? [255, 152, 0] : [244, 67, 54];
+        doc.setTextColor(...scoreColor);
+        doc.text(`Score: ${r.earnedMarks} / ${r.totalMarks}  (${r.percentage}%)`, pw / 2, y + 10, { align: 'center' });
+        if (r.timedOut) {
+            doc.setFontSize(9);
+            doc.setTextColor(200, 50, 50);
+            doc.text('Time expired - unanswered questions marked as zero', pw / 2, y + 19, { align: 'center' });
+        }
+        y += 32;
+
+        // Divider
+        doc.setDrawColor(200, 200, 200);
+        doc.line(margin, y, pw - margin, y);
+        y += 8;
+
+        // Questions by topic
+        const byTopic = {};
+        r.questions.forEach(q => {
+            if (!byTopic[q.topicName]) byTopic[q.topicName] = [];
+            byTopic[q.topicName].push(q);
+        });
+
+        Object.entries(byTopic).forEach(([topic, qs]) => {
+            const topicMarks = qs.reduce((s, q) => s + q.marks, 0);
+            const topicEarned = qs.reduce((s, q) => s + q.marksEarned, 0);
+
+            if (y > 260) { doc.addPage(); y = margin; }
+
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(40, 40, 40);
+            doc.text(`${topic}  [${topicEarned}/${topicMarks}]`, margin, y);
+            y += 7;
+
+            qs.forEach(q => {
+                if (y > 265) { doc.addPage(); y = margin; }
+
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(60, 60, 60);
+                const qText = `Q${q.index + 1} (${q.marks}m): ${q.text}`.substring(0, 80);
+                doc.text(qText, margin, y);
+                y += 5;
+
+                doc.setTextColor(100, 100, 100);
+                doc.text(`Your answer: ${q.userAnswer}`, margin + 4, y);
+                if (q.isCorrect) {
+                    doc.setTextColor(76, 175, 80);
+                    doc.text(`Correct (${q.marksEarned}/${q.marks})`, margin + 100, y);
+                } else {
+                    doc.setTextColor(244, 67, 54);
+                    doc.text(`Wrong (0/${q.marks}) Answer: ${q.correctAnswer}`, margin + 100, y);
+                }
+                y += 6;
+            });
+            y += 4;
+        });
+
+        doc.save(`math-arena-test-${r.studentName.replace(/\s+/g, '-')}-${d.toISOString().slice(0, 10)}.pdf`);
+    });
+
+    /* ---- New Test ---- */
+    $testNewBtn.addEventListener('click', () => {
+        testState.selectedTopics = [];
+        testState.results = null;
+        document.querySelectorAll('.test-topic-chip').forEach(c => c.classList.remove('selected'));
+        updateTestSummary();
+        showTestScreen('testSetupScreen');
+    });
+
+    // Initialize test topic grid
+    buildTestTopicGrid();
+    updateTestSummary();
 
     /* ---- Init ---- */
     updateCalcDisplay();

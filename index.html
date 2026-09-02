@@ -26,6 +26,7 @@
         <div class="nav-logo">Math Arena</div>
         <div class="nav-tabs">
             <button class="nav-tab active" data-view="game">Game</button>
+            <button class="nav-tab" data-view="test">Test</button>
             <button class="nav-tab" data-view="learn">Learn</button>
             <button class="nav-tab" data-view="calculator">Calculator</button>
         </div>
@@ -318,6 +319,92 @@
                 <button class="btn btn-num" data-action="decimal">.</button>
                 <button class="btn btn-op" data-action="backspace">&#11014;</button>
             </div>
+        </div>
+    </div>
+
+    <!-- ===================== TEST VIEW ===================== -->
+    <div class="view test-view" id="testView">
+        
+        <!-- TEST SETUP SCREEN -->
+        <div class="screen active" id="testSetupScreen">
+            <div class="test-header">
+                <h1>Test</h1>
+                <p class="test-sub">Select topics, set a time limit, and test your knowledge</p>
+            </div>
+
+            <div class="test-setup-section">
+                <h2>Choose Topics</h2>
+                <p class="test-setup-hint">Select one or more topics from the curriculum. Questions will be generated for each selected topic.</p>
+                <div class="test-topic-grid" id="testTopicGrid"></div>
+            </div>
+
+            <div class="test-setup-section">
+                <h2>Time Limit</h2>
+                <div class="test-time-options">
+                    <button class="test-time-btn" data-minutes="15">15 min</button>
+                    <button class="test-time-btn" data-minutes="30">30 min</button>
+                    <button class="test-time-btn active" data-minutes="45">45 min</button>
+                    <button class="test-time-btn" data-minutes="60">60 min</button>
+                    <button class="test-time-btn" data-minutes="90">90 min</button>
+                    <button class="test-time-btn" data-minutes="120">120 min</button>
+                </div>
+            </div>
+
+            <div class="test-setup-section test-summary-section">
+                <h2>Test Summary</h2>
+                <div class="test-summary-info" id="testSummaryInfo">
+                    <p>Select at least one topic to begin</p>
+                </div>
+            </div>
+
+            <button class="test-start-btn" id="testStartBtn" disabled>Start Test</button>
+        </div>
+
+        <!-- TEST NAME SCREEN -->
+        <div class="screen" id="testNameScreen">
+            <div class="test-name-card">
+                <h2>Enter Your Name</h2>
+                <p>Your name will appear on the test report</p>
+                <input type="text" class="test-name-input" id="testNameInput" placeholder="Full name" autocomplete="off">
+                <div class="test-name-actions">
+                    <button class="test-name-btn secondary" id="testNameBackBtn">Back</button>
+                    <button class="test-name-btn primary" id="testNameStartBtn">Begin Test</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TEST IN PROGRESS SCREEN -->
+        <div class="screen" id="testInProgressScreen">
+            <div class="test-hud">
+                <div class="test-hud-timer" id="testTimer">00:00:00</div>
+                <div class="test-hud-progress">
+                    <span id="testProgress">Question 1 of 10</span>
+                    <span id="testMarks">0 / 50 marks</span>
+                </div>
+            </div>
+            <div class="test-question-area" id="testQuestionArea"></div>
+            <div class="test-nav-btns">
+                <button class="test-nav-btn" id="testPrevBtn">Previous</button>
+                <button class="test-nav-btn" id="testNextBtn">Next</button>
+            </div>
+            <div class="test-question-nav" id="testQuestionNav"></div>
+            <button class="test-submit-btn" id="testSubmitBtn">Submit Test</button>
+        </div>
+
+        <!-- TEST RESULTS SCREEN -->
+        <div class="screen" id="testResultsScreen">
+            <div class="test-results-header">
+                <h1>Test Complete</h1>
+                <div class="test-score-circle" id="testScoreCircle">
+                    <span class="test-score-pct" id="testScorePct">0%</span>
+                    <span class="test-score-detail" id="testScoreDetail">0 / 50</span>
+                </div>
+                <p class="test-results-name" id="testResultsName"></p>
+                <p class="test-results-date" id="testResultsDate"></p>
+            </div>
+            <div class="test-breakdown" id="testBreakdown"></div>
+            <button class="test-download-btn" id="testDownloadBtn">Download Marked Test</button>
+            <button class="test-new-btn" id="testNewBtn">New Test</button>
         </div>
     </div>
 
