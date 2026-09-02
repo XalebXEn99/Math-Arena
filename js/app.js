@@ -463,7 +463,17 @@
 
             if (game.currentIndex >= game.questions.length) {
                 endGame();
-                showResults();
+                // Ensure results are shown
+                try {
+                    showResults();
+                } catch (e) {
+                    console.error('Error showing results:', e);
+                    // Fallback: at least show the results screen
+                    if (!$gameView.classList.contains('active')) {
+                        $gameView.classList.add('active');
+                    }
+                    showScreen($resultsScreen);
+                }
             } else {
                 showQuestion();
                 $answerInput.focus();
