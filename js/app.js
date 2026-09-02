@@ -1043,13 +1043,16 @@
         // Right angle marker
         s += svgPoly(`${ox+10},${oy} ${ox+10},${oy-10} ${ox},${oy-10}`, 'none', 'rgba(255,255,255,0.5)');
         // Labels
-        s += svgText(ox - 14, oy - sa/2, `a=${a}`, 11, '#ffc107');
-        s += svgText(ox + sb/2, oy + 16, `b=${b}`, 11, '#4caf50');
         if (showHyp) {
-            s += svgText(ox + sb/2 + 14, oy - sa/2 - 8, `c=${c}?`, 12, '#64b5f6');
+            // Finding hypotenuse c: show a and b, hide c
+            s += svgText(ox - 14, oy - sa/2, `a=${a}`, 11, '#ffc107');
+            s += svgText(ox + sb/2, oy + 16, `b=${b}`, 11, '#4caf50');
+            s += svgText(ox + sb/2 + 14, oy - sa/2 - 8, `c=?`, 12, '#64b5f6');
         } else {
+            // Finding side b: show a and c, hide b
+            s += svgText(ox - 14, oy - sa/2, `a=${a}`, 11, '#ffc107');
+            s += svgText(ox + sb/2, oy + 16, `b=?`, 11, '#4caf50');
             s += svgText(ox + sb/2 + 14, oy - sa/2 - 8, `c=${c}`, 11, '#64b5f6');
-            s += svgText(ox - 14, oy - sa/2, `a=${a}?`, 11, '#ffc107');
         }
         return svgWrap(w, h, s);
     }
@@ -1071,11 +1074,11 @@
         const px = cx + origX * unit, py = cy - origY * unit;
         s += `<circle cx="${px}" cy="${py}" r="5" fill="#ffc107"/>`;
         s += svgText(px + 10, py - 8, `(${origX},${origY})`, 9, '#ffc107');
-        // Result point (hide coordinates, show question mark)
+        // Result point (hide coordinates, show variable notation)
         let rx, ry, label;
-        if (type === 0) { rx = origX; ry = -origY; label = '(?,?)'; }
-        else if (type === 1) { rx = origX + (dx||0); ry = origY + (dy||0); label = '(?,?)'; }
-        else { rx = -origX; ry = -origY; label = '(?,?)'; }
+        if (type === 0) { rx = origX; ry = -origY; label = '(x,y)'; }
+        else if (type === 1) { rx = origX + (dx||0); ry = origY + (dy||0); label = '(x,y)'; }
+        else { rx = -origX; ry = -origY; label = '(x,y)'; }
         const rpx = cx + rx * unit, rpy = cy - ry * unit;
         s += `<circle cx="${rpx}" cy="${rpy}" r="5" fill="#4caf50"/>`;
         s += svgText(rpx + 10, rpy - 8, label, 9, '#4caf50');
