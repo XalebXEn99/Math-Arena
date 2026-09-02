@@ -932,7 +932,7 @@
         const x1 = cx + r*Math.cos(s), y1 = cy + r*Math.sin(s);
         const x2 = cx + r*Math.cos(e), y2 = cy + r*Math.sin(e);
         const large = (endDeg - startDeg > 180) ? 1 : 0;
-        return `<path d="M${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2}" fill="none" stroke="${c||'var(--gold)'}" stroke-width="1.5"/>`;
+        return `<path d="M${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2}" fill="none" stroke="${c||'#ffc107'}" stroke-width="1.5"/>`;
     }
     function svgRect(x,y,w,h,fill,stroke) { return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill||'none'}" stroke="${stroke||'rgba(255,255,255,0.7)'}" stroke-width="2"/>`; }
     function svgCircle(cx,cy,r,fill,stroke) { return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill||'none'}" stroke="${stroke||'rgba(255,255,255,0.7)'}" stroke-width="2"/>`; }
@@ -943,21 +943,15 @@
     function svgAnglesOnLine(a1, a2) {
         const a3 = 180 - a1 - a2;
         const cx = 120, cy = 90, r = 50;
-        // Three rays from center: left, middle1, middle2, right
-        const ang0 = 180, ang1 = 180 - a1, ang2 = 180 - a1 - a2, ang3 = 0;
-        const pts = [ang0, ang1, ang2, ang3].map(a => {
-            const rad = a * Math.PI / 180;
-            return [cx + r * 1.6 * Math.cos(rad), cy - r * 1.6 * Math.sin(rad)];
-        });
         let s = svgLine(10, cy, 230, cy, 'rgba(255,255,255,0.7)', 2);
         // Arcs
-        s += svgArc(cx, cy, 30, 180 - a1, 180, 'var(--gold)');
-        s += svgArc(cx, cy, 35, 180 - a1 - a2, 180 - a1, 'var(--green)');
+        s += svgArc(cx, cy, 30, 180 - a1, 180, '#ffc107');
+        s += svgArc(cx, cy, 35, 180 - a1 - a2, 180 - a1, '#4caf50');
         s += svgArc(cx, cy, 25, 0, 180 - a1 - a2, '#64b5f6');
         // Labels
         const l1a = 180 - a1/2, l2a = 180 - a1 - a2/2, l3a = (180 - a1 - a2)/2;
-        s += svgText(cx + 42*Math.cos(l1a*Math.PI/180), cy - 42*Math.sin(l1a*Math.PI/180), `${a1}\u00B0`, 10, 'var(--gold)');
-        s += svgText(cx + 48*Math.cos(l2a*Math.PI/180), cy - 48*Math.sin(l2a*Math.PI/180), `${a2}\u00B0`, 10, 'var(--green)');
+        s += svgText(cx + 42*Math.cos(l1a*Math.PI/180), cy - 42*Math.sin(l1a*Math.PI/180), `${a1}\u00B0`, 10, '#ffc107');
+        s += svgText(cx + 48*Math.cos(l2a*Math.PI/180), cy - 48*Math.sin(l2a*Math.PI/180), `${a2}\u00B0`, 10, '#4caf50');
         s += svgText(cx + 38*Math.cos(l3a*Math.PI/180), cy - 38*Math.sin(l3a*Math.PI/180), 'x', 11, '#64b5f6');
         return svgWrap(240, 120, s);
     }
@@ -967,7 +961,7 @@
         const a4 = 360 - a1 - a2 - a3;
         const cx = 120, cy = 100, r = 55;
         const angles = [0, a1, a1+a2, a1+a2+a3];
-        const colors = ['var(--gold)', 'var(--green)', '#64b5f6', '#ef5350'];
+        const colors = ['#ffc107', '#4caf50', '#64b5f6', '#ef5350'];
         const labels = [`${a1}\u00B0`, `${a2}\u00B0`, `${a3}\u00B0`, 'x'];
         let s = '';
         // Draw rays
@@ -998,8 +992,8 @@
         const ay = B[1] - bc / (Math.tan(a1*Math.PI/180) + 1/Math.tan(a2*Math.PI/180)) * (1/Math.tan(a1*Math.PI/180));
         const A = [ax, ay > 10 ? ay : 30];
         let s = svgPoly(`${B[0]},${B[1]} ${C[0]},${C[1]} ${A[0]},${A[1]}`, 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.7)');
-        s += svgText(B[0]-12, B[1]+2, `${a1}\u00B0`, 11, 'var(--gold)');
-        s += svgText(C[0]+14, C[1]+2, `${a2}\u00B0`, 11, 'var(--green)');
+        s += svgText(B[0]-12, B[1]+2, `${a1}\u00B0`, 11, '#ffc107');
+        s += svgText(C[0]+14, C[1]+2, `${a2}\u00B0`, 11, '#4caf50');
         s += svgText(A[0], A[1]-12, 'x', 12, '#64b5f6');
         return svgWrap(w, h, s);
     }
@@ -1010,7 +1004,7 @@
         const pts = [[50,140],[200,140],[180,40],[60,50]];
         let s = svgPoly(pts.map(p=>p.join(',')).join(' '), 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.7)');
         const labels = [`${a1}\u00B0`,`${a2}\u00B0`,`${a3}\u00B0`,`${a4}\u00B0`];
-        const colors = ['var(--gold)','var(--green)','#64b5f6','#ef5350'];
+        const colors = ['#ffc107','#4caf50','#64b5f6','#ef5350'];
         const offsets = [[-16,10],[16,10],[16,-8],[-16,-8]];
         pts.forEach((p,i) => {
             s += svgText(p[0]+offsets[i][0], p[1]+offsets[i][1], labels[i], 10, colors[i]);
@@ -1023,16 +1017,16 @@
         const w = 280, h = 140;
         // Small triangle
         const s1 = 40;
-        let s = svgPoly(`40,110 ${40+s1},110 ${40+s1/2},${110-s1*0.866}`, 'rgba(255,255,255,0.03)', 'var(--gold)');
-        s += svgText(40+s1/2, 120, side, 11, 'var(--gold)');
+        let s = svgPoly(`40,110 ${40+s1},110 ${40+s1/2},${110-s1*0.866}`, 'rgba(255,255,255,0.03)', '#ffc107');
+        s += svgText(40+s1/2, 120, side, 11, '#ffc107');
         // Large triangle
         const s2 = s1 * scale;
         const maxH = Math.min(s2 * 0.866, 100);
         const sc = maxH / (s2 * 0.866);
         const actualS2 = s2 * sc;
         const ox = 150;
-        s += svgPoly(`${ox},110 ${ox+actualS2},110 ${ox+actualS2/2},${110-maxH}`, 'rgba(255,255,255,0.03)', 'var(--green)');
-        s += svgText(ox+actualS2/2, 120, side*scale, 11, 'var(--green)');
+        s += svgPoly(`${ox},110 ${ox+actualS2},110 ${ox+actualS2/2},${110-maxH}`, 'rgba(255,255,255,0.03)', '#4caf50');
+        s += svgText(ox+actualS2/2, 120, side*scale, 11, '#4caf50');
         // Scale label
         s += svgText(w/2, 20, `Scale factor: ${scale}`, 12, 'rgba(255,255,255,0.6)');
         return svgWrap(w, h, s);
@@ -1049,13 +1043,13 @@
         // Right angle marker
         s += svgPoly(`${ox+10},${oy} ${ox+10},${oy-10} ${ox},${oy-10}`, 'none', 'rgba(255,255,255,0.5)');
         // Labels
-        s += svgText(ox - 14, oy - sa/2, `a=${a}`, 11, 'var(--gold)');
-        s += svgText(ox + sb/2, oy + 16, `b=${b}`, 11, 'var(--green)');
+        s += svgText(ox - 14, oy - sa/2, `a=${a}`, 11, '#ffc107');
+        s += svgText(ox + sb/2, oy + 16, `b=${b}`, 11, '#4caf50');
         if (showHyp) {
             s += svgText(ox + sb/2 + 14, oy - sa/2 - 8, `c=${c}?`, 12, '#64b5f6');
         } else {
             s += svgText(ox + sb/2 + 14, oy - sa/2 - 8, `c=${c}`, 11, '#64b5f6');
-            s += svgText(ox - 14, oy - sa/2, `a=${a}?`, 11, 'var(--gold)');
+            s += svgText(ox - 14, oy - sa/2, `a=${a}?`, 11, '#ffc107');
         }
         return svgWrap(w, h, s);
     }
@@ -1075,16 +1069,16 @@
         s += svgLine(cx, 10, cx, h-10, 'rgba(255,255,255,0.3)', 1.5);
         // Original point
         const px = cx + origX * unit, py = cy - origY * unit;
-        s += `<circle cx="${px}" cy="${py}" r="5" fill="var(--gold)"/>`;
-        s += svgText(px + 10, py - 8, `(${origX},${origY})`, 9, 'var(--gold)');
+        s += `<circle cx="${px}" cy="${py}" r="5" fill="#ffc107"/>`;
+        s += svgText(px + 10, py - 8, `(${origX},${origY})`, 9, '#ffc107');
         // Result point
         let rx, ry, label;
         if (type === 0) { rx = origX; ry = -origY; label = `(${rx},${ry})`; }
         else if (type === 1) { rx = origX + (dx||0); ry = origY + (dy||0); label = `(${rx},${ry})`; }
         else { rx = -origX; ry = -origY; label = `(${rx},${ry})`; }
         const rpx = cx + rx * unit, rpy = cy - ry * unit;
-        s += `<circle cx="${rpx}" cy="${rpy}" r="5" fill="var(--green)"/>`;
-        s += svgText(rpx + 10, rpy - 8, label, 9, 'var(--green)');
+        s += `<circle cx="${rpx}" cy="${rpy}" r="5" fill="#4caf50"/>`;
+        s += svgText(rpx + 10, rpy - 8, label, 9, '#4caf50');
         // Dashed line connecting
         s += svgDash(px, py, rpx, rpy, 'rgba(255,255,255,0.2)');
         return svgWrap(w, h, s);
@@ -1096,8 +1090,8 @@
         const rw = Math.min(160, l * 10), rh = Math.min(100, w * 10);
         const ox = (sw - rw)/2, oy = (sh - rh)/2;
         let s = svgRect(ox, oy, rw, rh, 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.7)');
-        s += svgText(ox + rw/2, oy + rh + 16, `${l} cm`, 12, 'var(--gold)');
-        s += svgText(ox - 18, oy + rh/2, `${w} cm`, 11, 'var(--green)');
+        s += svgText(ox + rw/2, oy + rh + 16, `${l} cm`, 12, '#ffc107');
+        s += svgText(ox - 18, oy + rh/2, `${w} cm`, 11, '#4caf50');
         return svgWrap(sw, sh, s);
     }
 
@@ -1109,8 +1103,8 @@
         let s = svgPoly(`${ox},${oy} ${ox+bw},${oy} ${ox+bw/2},${oy-bh}`, 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.7)');
         // Height dashed line
         s += svgDash(ox+bw/2, oy, ox+bw/2, oy-bh, 'rgba(255,255,255,0.4)');
-        s += svgText(ox + bw/2, oy + 16, `${b} cm`, 12, 'var(--gold)');
-        s += svgText(ox + bw/2 + 18, oy - bh/2, `${h} cm`, 11, 'var(--green)');
+        s += svgText(ox + bw/2, oy + 16, `${b} cm`, 12, '#ffc107');
+        s += svgText(ox + bw/2 + 18, oy - bh/2, `${h} cm`, 11, '#4caf50');
         return svgWrap(sw, sh, s);
     }
 
@@ -1121,10 +1115,10 @@
         const cx = sw/2, cy = sh/2;
         let s = svgCircle(cx, cy, cr, 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.7)');
         // Radius line
-        s += svgLine(cx, cy, cx + cr, cy, 'var(--gold)', 2);
-        s += svgText(cx + cr/2, cy - 10, `r = ${r} cm`, 11, 'var(--gold)');
+        s += svgLine(cx, cy, cx + cr, cy, '#ffc107', 2);
+        s += svgText(cx + cr/2, cy - 10, `r = ${r} cm`, 11, '#ffc107');
         // Center dot
-        s += `<circle cx="${cx}" cy="${cy}" r="2.5" fill="var(--gold)"/>`;
+        s += `<circle cx="${cx}" cy="${cy}" r="2.5" fill="#ffc107"/>`;
         return svgWrap(sw, sh, s);
     }
 
@@ -1141,9 +1135,9 @@
         // Right face
         s += svgPoly(`${ox+sl},${oy} ${ox+sl+sw2},${oy-sw2*0.5} ${ox+sl+sw2},${oy-sh2-sw2*0.5} ${ox+sl},${oy-sh2}`, 'rgba(255,255,255,0.02)', 'rgba(255,255,255,0.7)');
         // Labels
-        s += svgText(ox+sl/2, oy+16, `l = ${l} cm`, 10, 'var(--gold)');
+        s += svgText(ox+sl/2, oy+16, `l = ${l} cm`, 10, '#ffc107');
         s += svgText(ox+sl+sw2/2+14, oy-sh2/2-sw2*0.25-6, `h = ${h} cm`, 10, '#64b5f6');
-        s += svgText(ox+sl/2+sw2/2+20, oy+6, `w = ${w} cm`, 10, 'var(--green)');
+        s += svgText(ox+sl/2+sw2/2+20, oy+6, `w = ${w} cm`, 10, '#4caf50');
         return svgWrap(sw, sh, s);
     }
 
@@ -1157,8 +1151,8 @@
         let s = svgPoly(`${ox},${oy} ${ox+s2},${oy} ${ox+s2},${oy-s2} ${ox},${oy-s2}`, 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0.7)');
         s += svgPoly(`${ox},${oy-s2} ${ox+s2},${oy-s2} ${ox+s2+d},${oy-s2-d*0.5} ${ox+d},${oy-s2-d*0.5}`, 'rgba(255,255,255,0.06)', 'rgba(255,255,255,0.7)');
         s += svgPoly(`${ox+s2},${oy} ${ox+s2+d},${oy-d*0.5} ${ox+s2+d},${oy-s2-d*0.5} ${ox+s2},${oy-s2}`, 'rgba(255,255,255,0.02)', 'rgba(255,255,255,0.7)');
-        s += svgText(ox+s2/2, oy+16, `${side} cm`, 11, 'var(--gold)');
-        s += svgText(ox-16, oy-s2/2, `${side} cm`, 11, 'var(--green)');
+        s += svgText(ox+s2/2, oy+16, `${side} cm`, 11, '#ffc107');
+        s += svgText(ox-16, oy-s2/2, `${side} cm`, 11, '#4caf50');
         return svgWrap(sw, sh, s);
     }
 
