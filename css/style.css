@@ -49,6 +49,15 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* Exponent styling */
+sup {
+    font-size: 0.7em;
+    vertical-align: super;
+    line-height: 0;
+    color: var(--gold);
+    font-weight: 600;
+}
+
 html, body {
     width: 100%;
     min-height: 100vh;
