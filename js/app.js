@@ -541,19 +541,21 @@
 
         // Review list
         let reviewHtml = '';
-        game.answers.forEach((a, i) => {
-            const cls = a.correct ? 'right' : 'wrong';
-            const userFrac = fracToHTML(String(a.userAnswer));
-            const correctFrac = fracToHTML(String(a.correctAnswer));
-            const questionFrac = fracToHTML(a.question);
-            const display = a.correct
-                ? userFrac
-                : `${userFrac} <span class="ri-was">(was</span> ${correctFrac}<span class="ri-was">)</span>`;
-            reviewHtml += `<div class="review-item">
-                <span class="ri-q">${i + 1}. ${questionFrac} =</span>
-                <span class="ri-a ${cls}">${display}</span>
-            </div>`;
-        });
+        if (game.answers && game.answers.length > 0) {
+            game.answers.forEach((a, i) => {
+                const cls = a.correct ? 'right' : 'wrong';
+                const userFrac = fracToHTML(String(a.userAnswer));
+                const correctFrac = fracToHTML(String(a.correctAnswer));
+                const questionFrac = fracToHTML(a.question);
+                const display = a.correct
+                    ? userFrac
+                    : `${userFrac} <span class="ri-was">(was</span> ${correctFrac}<span class="ri-was">)</span>`;
+                reviewHtml += `<div class="review-item">
+                    <span class="ri-q">${i + 1}. ${questionFrac} =</span>
+                    <span class="ri-a ${cls}">${display}</span>
+                </div>`;
+            });
+        }
         $reviewList.innerHTML = reviewHtml;
 
         // Show name modal immediately
