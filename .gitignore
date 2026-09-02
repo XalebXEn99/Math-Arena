@@ -1,0 +1,5 @@
+node_modules/
+*.pdf
+generate_test_pdf.js
+package.json
+package-lock.json
