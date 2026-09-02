@@ -398,8 +398,11 @@
     /* Render question text with visual stacked fractions */
     function renderQuestionHTML(q) {
         const suffix = ' = ?';
-        if (!q.isFraction) return q.text + suffix;
-        return fracToHTML(q.text) + suffix;
+        let html = '';
+        if (q.svg) html += `<div class="practice-q-svg">${q.svg}</div>`;
+        if (q.detail) html += `<div class="practice-q-detail">${q.detail}</div>`;
+        if (!q.isFraction) return html + q.text + suffix;
+        return html + fracToHTML(q.text) + suffix;
     }
 
     /* Convert a/b patterns in text to stacked fraction HTML */
@@ -918,6 +921,247 @@
         }
     ];
 
+    /* ---- SVG Shape Generators for Geometry ---- */
+    function svgWrap(w, h, inner) {
+        return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto 12px;max-width:100%;">${inner}</svg>`;
+    }
+    function svgLine(x1,y1,x2,y2,c,w) { return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c||'rgba(255,255,255,0.7)'}" stroke-width="${w||2}"/>`; }
+    function svgText(x,y,txt,sz,c) { return `<text x="${x}" y="${y}" fill="${c||'#fff'}" font-size="${sz||12}" font-family="Fredoka,sans-serif" text-anchor="middle" dominant-baseline="middle">${txt}</text>`; }
+    function svgArc(cx,cy,r,startDeg,endDeg,c) {
+        const s = startDeg * Math.PI/180, e = endDeg * Math.PI/180;
+        const x1 = cx + r*Math.cos(s), y1 = cy + r*Math.sin(s);
+        const x2 = cx + r*Math.cos(e), y2 = cy + r*Math.sin(e);
+        const large = (endDeg - startDeg > 180) ? 1 : 0;
+        return `<path d="M${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2}" fill="none" stroke="${c||'var(--gold)'}" stroke-width="1.5"/>`;
+    }
+    function svgRect(x,y,w,h,fill,stroke) { return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill||'none'}" stroke="${stroke||'rgba(255,255,255,0.7)'}" stroke-width="2"/>`; }
+    function svgCircle(cx,cy,r,fill,stroke) { return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill||'none'}" stroke="${stroke||'rgba(255,255,255,0.7)'}" stroke-width="2"/>`; }
+    function svgPoly(pts,fill,stroke) { return `<polygon points="${pts}" fill="${fill||'none'}" stroke="${stroke||'rgba(255,255,255,0.7)'}" stroke-width="2"/>`; }
+    function svgDash(x1,y1,x2,y2,c) { return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c||'rgba(255,255,255,0.3)'}" stroke-width="1.5" stroke-dasharray="4,3"/>`; }
+
+    // Angle on a line SVG
+    function svgAnglesOnLine(a1, a2) {
+        const a3 = 180 - a1 - a2;
+        const cx = 120, cy = 90, r = 50;
+        // Three rays from center: left, middle1, middle2, right
+        const ang0 = 180, ang1 = 180 - a1, ang2 = 180 - a1 - a2, ang3 = 0;
+        const pts = [ang0, ang1, ang2, ang3].map(a => {
+            const rad = a * Math.PI / 180;
+            return [cx + r * 1.6 * Math.cos(rad), cy - r * 1.6 * Math.sin(rad)];
+        });
+        let s = svgLine(10, cy, 230, cy, 'rgba(255,255,255,0.7)', 2);
+        // Arcs
+        s += svgArc(cx, cy, 30, 180 - a1, 180, 'var(--gold)');
+        s += svgArc(cx, cy, 35, 180 - a1 - a2, 180 - a1, 'var(--green)');
+        s += svgArc(cx, cy, 25, 0, 180 - a1 - a2, '#64b5f6');
+        // Labels
+        const l1a = 180 - a1/2, l2a = 180 - a1 - a2/2, l3a = (180 - a1 - a2)/2;
+        s += svgText(cx + 42*Math.cos(l1a*Math.PI/180), cy - 42*Math.sin(l1a*Math.PI/180), `${a1}\u00B0`, 10, 'var(--gold)');
+        s += svgText(cx + 48*Math.cos(l2a*Math.PI/180), cy - 48*Math.sin(l2a*Math.PI/180), `${a2}\u00B0`, 10, 'var(--green)');
+        s += svgText(cx + 38*Math.cos(l3a*Math.PI/180), cy - 38*Math.sin(l3a*Math.PI/180), 'x', 11, '#64b5f6');
+        return svgWrap(240, 120, s);
+    }
+
+    // Angles at a point SVG
+    function svgAnglesAtPoint(a1, a2, a3) {
+        const a4 = 360 - a1 - a2 - a3;
+        const cx = 120, cy = 100, r = 55;
+        const angles = [0, a1, a1+a2, a1+a2+a3];
+        const colors = ['var(--gold)', 'var(--green)', '#64b5f6', '#ef5350'];
+        const labels = [`${a1}\u00B0`, `${a2}\u00B0`, `${a3}\u00B0`, 'x'];
+        let s = '';
+        // Draw rays
+        for (let i = 0; i < 4; i++) {
+            const rad = angles[i] * Math.PI / 180;
+            s += svgLine(cx, cy, cx + r*1.4*Math.cos(rad), cy - r*1.4*Math.sin(rad), 'rgba(255,255,255,0.5)', 1.5);
+        }
+        // Draw arcs and labels
+        for (let i = 0; i < 4; i++) {
+            const start = angles[i], end = angles[(i+1)%4] || 360;
+            const actualEnd = i === 3 ? 360 : end;
+            s += svgArc(cx, cy, 20 + i*5, start, actualEnd, colors[i]);
+            const mid = (start + actualEnd) / 2;
+            const lr = 45 + i*5;
+            s += svgText(cx + lr*Math.cos(mid*Math.PI/180), cy - lr*Math.sin(mid*Math.PI/180), labels[i], 9, colors[i]);
+        }
+        return svgWrap(240, 200, s);
+    }
+
+    // Triangle with angles SVG
+    function svgTriangleAngles(a1, a2, a3) {
+        const w = 240, h = 160;
+        // Place triangle with vertices
+        const B = [40, 130], C = [200, 130];
+        // Calculate A using angles
+        const bc = C[0] - B[0];
+        const ax = B[0] + bc * (1/Math.tan(a1*Math.PI/180)) / (1/Math.tan(a1*Math.PI/180) + 1/Math.tan(a2*Math.PI/180));
+        const ay = B[1] - bc / (Math.tan(a1*Math.PI/180) + 1/Math.tan(a2*Math.PI/180)) * (1/Math.tan(a1*Math.PI/180));
+        const A = [ax, ay > 10 ? ay : 30];
+        let s = svgPoly(`${B[0]},${B[1]} ${C[0]},${C[1]} ${A[0]},${A[1]}`, 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.7)');
+        s += svgText(B[0]-12, B[1]+2, `${a1}\u00B0`, 11, 'var(--gold)');
+        s += svgText(C[0]+14, C[1]+2, `${a2}\u00B0`, 11, 'var(--green)');
+        s += svgText(A[0], A[1]-12, 'x', 12, '#64b5f6');
+        return svgWrap(w, h, s);
+    }
+
+    // Quadrilateral with angles SVG
+    function svgQuadAngles(a1, a2, a3, a4) {
+        const w = 240, h = 180;
+        const pts = [[50,140],[200,140],[180,40],[60,50]];
+        let s = svgPoly(pts.map(p=>p.join(',')).join(' '), 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.7)');
+        const labels = [`${a1}\u00B0`,`${a2}\u00B0`,`${a3}\u00B0`,`${a4}\u00B0`];
+        const colors = ['var(--gold)','var(--green)','#64b5f6','#ef5350'];
+        const offsets = [[-16,10],[16,10],[16,-8],[-16,-8]];
+        pts.forEach((p,i) => {
+            s += svgText(p[0]+offsets[i][0], p[1]+offsets[i][1], labels[i], 10, colors[i]);
+        });
+        return svgWrap(w, h, s);
+    }
+
+    // Similar shapes SVG
+    function svgSimilarShapes(scale, side) {
+        const w = 280, h = 140;
+        // Small triangle
+        const s1 = 40;
+        let s = svgPoly(`40,110 ${40+s1},110 ${40+s1/2},${110-s1*0.866}`, 'rgba(255,255,255,0.03)', 'var(--gold)');
+        s += svgText(40+s1/2, 120, side, 11, 'var(--gold)');
+        // Large triangle
+        const s2 = s1 * scale;
+        const maxH = Math.min(s2 * 0.866, 100);
+        const sc = maxH / (s2 * 0.866);
+        const actualS2 = s2 * sc;
+        const ox = 150;
+        s += svgPoly(`${ox},110 ${ox+actualS2},110 ${ox+actualS2/2},${110-maxH}`, 'rgba(255,255,255,0.03)', 'var(--green)');
+        s += svgText(ox+actualS2/2, 120, side*scale, 11, 'var(--green)');
+        // Scale label
+        s += svgText(w/2, 20, `Scale factor: ${scale}`, 12, 'rgba(255,255,255,0.6)');
+        return svgWrap(w, h, s);
+    }
+
+    // Pythagoras SVG
+    function svgPythagoras(a, b, c, showHyp) {
+        const w = 240, h = 180;
+        const ox = 50, oy = 140;
+        const scale = Math.min(120/a, 120/b, 100/c, 8);
+        const sa = a * scale, sb = b * scale;
+        // Right angle at bottom-left
+        let s = svgPoly(`${ox},${oy} ${ox+sb},${oy} ${ox},${oy-sa}`, 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.7)');
+        // Right angle marker
+        s += svgPoly(`${ox+10},${oy} ${ox+10},${oy-10} ${ox},${oy-10}`, 'none', 'rgba(255,255,255,0.5)');
+        // Labels
+        s += svgText(ox - 14, oy - sa/2, `a=${a}`, 11, 'var(--gold)');
+        s += svgText(ox + sb/2, oy + 16, `b=${b}`, 11, 'var(--green)');
+        if (showHyp) {
+            s += svgText(ox + sb/2 + 14, oy - sa/2 - 8, `c=${c}?`, 12, '#64b5f6');
+        } else {
+            s += svgText(ox + sb/2 + 14, oy - sa/2 - 8, `c=${c}`, 11, '#64b5f6');
+            s += svgText(ox - 14, oy - sa/2, `a=${a}?`, 11, 'var(--gold)');
+        }
+        return svgWrap(w, h, s);
+    }
+
+    // Transformations SVG
+    function svgTransform(origX, origY, type, dx, dy) {
+        const w = 240, h = 200;
+        const cx = 120, cy = 100, unit = 12;
+        let s = '';
+        // Grid
+        for (let i = -8; i <= 8; i++) {
+            s += svgLine(cx + i*unit, 10, cx + i*unit, h-10, 'rgba(255,255,255,0.06)', 1);
+            s += svgLine(10, cy + i*unit, w-10, cy + i*unit, 'rgba(255,255,255,0.06)', 1);
+        }
+        // Axes
+        s += svgLine(10, cy, w-10, cy, 'rgba(255,255,255,0.3)', 1.5);
+        s += svgLine(cx, 10, cx, h-10, 'rgba(255,255,255,0.3)', 1.5);
+        // Original point
+        const px = cx + origX * unit, py = cy - origY * unit;
+        s += `<circle cx="${px}" cy="${py}" r="5" fill="var(--gold)"/>`;
+        s += svgText(px + 10, py - 8, `(${origX},${origY})`, 9, 'var(--gold)');
+        // Result point
+        let rx, ry, label;
+        if (type === 0) { rx = origX; ry = -origY; label = `(${rx},${ry})`; }
+        else if (type === 1) { rx = origX + (dx||0); ry = origY + (dy||0); label = `(${rx},${ry})`; }
+        else { rx = -origX; ry = -origY; label = `(${rx},${ry})`; }
+        const rpx = cx + rx * unit, rpy = cy - ry * unit;
+        s += `<circle cx="${rpx}" cy="${rpy}" r="5" fill="var(--green)"/>`;
+        s += svgText(rpx + 10, rpy - 8, label, 9, 'var(--green)');
+        // Dashed line connecting
+        s += svgDash(px, py, rpx, rpy, 'rgba(255,255,255,0.2)');
+        return svgWrap(w, h, s);
+    }
+
+    // Rectangle area SVG
+    function svgRectangleArea(l, w) {
+        const sw = 220, sh = 140;
+        const rw = Math.min(160, l * 10), rh = Math.min(100, w * 10);
+        const ox = (sw - rw)/2, oy = (sh - rh)/2;
+        let s = svgRect(ox, oy, rw, rh, 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.7)');
+        s += svgText(ox + rw/2, oy + rh + 16, `${l} cm`, 12, 'var(--gold)');
+        s += svgText(ox - 18, oy + rh/2, `${w} cm`, 11, 'var(--green)');
+        return svgWrap(sw, sh, s);
+    }
+
+    // Triangle area SVG
+    function svgTriangleArea(b, h) {
+        const sw = 220, sh = 150;
+        const bw = Math.min(160, b * 8), bh = Math.min(100, h * 8);
+        const ox = (sw - bw)/2, oy = sh - 30;
+        let s = svgPoly(`${ox},${oy} ${ox+bw},${oy} ${ox+bw/2},${oy-bh}`, 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.7)');
+        // Height dashed line
+        s += svgDash(ox+bw/2, oy, ox+bw/2, oy-bh, 'rgba(255,255,255,0.4)');
+        s += svgText(ox + bw/2, oy + 16, `${b} cm`, 12, 'var(--gold)');
+        s += svgText(ox + bw/2 + 18, oy - bh/2, `${h} cm`, 11, 'var(--green)');
+        return svgWrap(sw, sh, s);
+    }
+
+    // Circle area SVG
+    function svgCircleArea(r) {
+        const sw = 200, sh = 160;
+        const cr = Math.min(55, r * 7);
+        const cx = sw/2, cy = sh/2;
+        let s = svgCircle(cx, cy, cr, 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.7)');
+        // Radius line
+        s += svgLine(cx, cy, cx + cr, cy, 'var(--gold)', 2);
+        s += svgText(cx + cr/2, cy - 10, `r = ${r} cm`, 11, 'var(--gold)');
+        // Center dot
+        s += `<circle cx="${cx}" cy="${cy}" r="2.5" fill="var(--gold)"/>`;
+        return svgWrap(sw, sh, s);
+    }
+
+    // Rectangular prism volume SVG (isometric)
+    function svgPrismVolume(l, w, h) {
+        const sw = 240, sh = 180;
+        const sc = Math.min(10, 120/Math.max(l,w,h));
+        const sl = l*sc, sw2 = w*sc*0.6, sh2 = h*sc;
+        const ox = 60, oy = sh - 30;
+        // Front face
+        let s = svgPoly(`${ox},${oy} ${ox+sl},${oy} ${ox+sl},${oy-sh2} ${ox},${oy-sh2}`, 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0.7)');
+        // Top face
+        s += svgPoly(`${ox},${oy-sh2} ${ox+sl},${oy-sh2} ${ox+sl+sw2},${oy-sh2-sw2*0.5} ${ox+sw2},${oy-sh2-sw2*0.5}`, 'rgba(255,255,255,0.06)', 'rgba(255,255,255,0.7)');
+        // Right face
+        s += svgPoly(`${ox+sl},${oy} ${ox+sl+sw2},${oy-sw2*0.5} ${ox+sl+sw2},${oy-sh2-sw2*0.5} ${ox+sl},${oy-sh2}`, 'rgba(255,255,255,0.02)', 'rgba(255,255,255,0.7)');
+        // Labels
+        s += svgText(ox+sl/2, oy+16, `l = ${l} cm`, 10, 'var(--gold)');
+        s += svgText(ox+sl+sw2/2+14, oy-sh2/2-sw2*0.25-6, `h = ${h} cm`, 10, '#64b5f6');
+        s += svgText(ox+sl/2+sw2/2+20, oy+6, `w = ${w} cm`, 10, 'var(--green)');
+        return svgWrap(sw, sh, s);
+    }
+
+    // Cube volume SVG
+    function svgCubeVolume(side) {
+        const sw = 200, sh = 170;
+        const sc = Math.min(14, 100/side);
+        const s2 = side * sc;
+        const ox = 50, oy = sh - 30;
+        const d = s2 * 0.5;
+        let s = svgPoly(`${ox},${oy} ${ox+s2},${oy} ${ox+s2},${oy-s2} ${ox},${oy-s2}`, 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0.7)');
+        s += svgPoly(`${ox},${oy-s2} ${ox+s2},${oy-s2} ${ox+s2+d},${oy-s2-d*0.5} ${ox+d},${oy-s2-d*0.5}`, 'rgba(255,255,255,0.06)', 'rgba(255,255,255,0.7)');
+        s += svgPoly(`${ox+s2},${oy} ${ox+s2+d},${oy-d*0.5} ${ox+s2+d},${oy-s2-d*0.5} ${ox+s2},${oy-s2}`, 'rgba(255,255,255,0.02)', 'rgba(255,255,255,0.7)');
+        s += svgText(ox+s2/2, oy+16, `${side} cm`, 11, 'var(--gold)');
+        s += svgText(ox-16, oy-s2/2, `${side} cm`, 11, 'var(--green)');
+        return svgWrap(sw, sh, s);
+    }
+
     /* ---- Question Generators for Practice ---- */
     const practiceGenerators = {
         'whole-nums': genWholeNumQ,
@@ -1104,43 +1348,42 @@
         const type = randInt(0, 1);
         if (type === 0) { // angles on a line
             const a1 = randInt(20, 80), a2 = randInt(20, 80);
-            return { text: `Angles on a line: ${a1}&deg;, ${a2}&deg;, x. Find x`, answer: 180 - a1 - a2 };
+            return { text: `Find x`, answer: 180 - a1 - a2, svg: svgAnglesOnLine(a1, a2), detail: `Angles on a line: ${a1}\u00B0, ${a2}\u00B0, x` };
         } else { // angles around a point
             const a1 = randInt(40, 100), a2 = randInt(40, 100), a3 = randInt(40, 100);
-            return { text: `Angles at a point: ${a1}&deg;, ${a2}&deg;, ${a3}&deg;, x. Find x`, answer: 360 - a1 - a2 - a3 };
+            return { text: `Find x`, answer: 360 - a1 - a2 - a3, svg: svgAnglesAtPoint(a1, a2, a3), detail: `Angles at a point: ${a1}\u00B0, ${a2}\u00B0, ${a3}\u00B0, x` };
         }
     }
 
     function genTriangleQ() {
         const a1 = randInt(30, 80), a2 = randInt(30, 140 - a1);
         const a3 = 180 - a1 - a2;
-        return { text: `Triangle angles: ${a1}&deg;, ${a2}&deg;, x. Find x`, answer: a3 };
+        return { text: `Find x (the third angle)`, answer: a3, svg: svgTriangleAngles(a1, a2, a3), detail: `Triangle angles: ${a1}\u00B0, ${a2}\u00B0, x` };
     }
 
     function genQuadQ() {
         const a1 = randInt(60, 120), a2 = randInt(60, 120), a3 = randInt(60, 120);
         const a4 = 360 - a1 - a2 - a3;
         if (a4 <= 0) return genQuadQ();
-        return { text: `Quadrilateral angles: ${a1}&deg;, ${a2}&deg;, ${a3}&deg;, x. Find x`, answer: a4 };
+        return { text: `Find x (the fourth angle)`, answer: a4, svg: svgQuadAngles(a1, a2, a3, a4), detail: `Quadrilateral angles: ${a1}\u00B0, ${a2}\u00B0, ${a3}\u00B0, x` };
     }
 
     function genSimilarityQ() {
         const scale = randInt(2, 5);
         const side = randInt(3, 12);
-        return { text: `Similar shapes, scale factor ${scale}. Side = ${side}. Corresponding side?`, answer: side * scale };
+        return { text: `Find the corresponding side of the larger shape`, answer: side * scale, svg: svgSimilarShapes(scale, side), detail: `Scale factor ${scale}, side = ${side}` };
     }
 
     function genPythagorasQ() {
-        // Generate Pythagorean triples
         const triples = [[3,4,5],[5,12,13],[6,8,10],[8,15,17],[7,24,25],[9,12,15]];
         const t = triples[randInt(0, triples.length - 1)];
         const mult = randInt(1, 2);
         const a = t[0] * mult, b = t[1] * mult, c = t[2] * mult;
         const type = randInt(0, 1);
         if (type === 0) {
-            return { text: `Right triangle: a=${a}, b=${b}. Find hypotenuse`, answer: c };
+            return { text: `Find the hypotenuse (c)`, answer: c, svg: svgPythagoras(a, b, c, true), detail: `Right triangle: a=${a}, b=${b}` };
         } else {
-            return { text: `Right triangle: hypotenuse=${c}, a=${a}. Find b`, answer: b };
+            return { text: `Find side b`, answer: b, svg: svgPythagoras(a, b, c, false), detail: `Right triangle: hypotenuse=${c}, a=${a}` };
         }
     }
 
@@ -1148,12 +1391,12 @@
         const type = randInt(0, 2);
         const x = randInt(-8, 8), y = randInt(-8, 8);
         if (type === 0) {
-            return { text: `Reflect (${x}, ${y}) in x-axis. New y-coordinate?`, answer: -y };
+            return { text: `Reflect (${x}, ${y}) in the x-axis. Give the new y-coordinate.`, answer: -y, svg: svgTransform(x, y, 0), detail: `Reflect (${x}, ${y}) in x-axis` };
         } else if (type === 1) {
             const dx = randInt(-5, 5), dy = randInt(-5, 5);
-            return { text: `Translate (${x}, ${y}) by (${dx}, ${dy}). New x?`, answer: x + dx };
+            return { text: `Translate (${x}, ${y}) by (${dx}, ${dy}). Give the new x-coordinate.`, answer: x + dx, svg: svgTransform(x, y, 1, dx, dy), detail: `Translate (${x}, ${y}) by (${dx}, ${dy})` };
         } else {
-            return { text: `Rotate (${x}, ${y}) 180&deg; about origin. New x?`, answer: -x };
+            return { text: `Rotate (${x}, ${y}) 180\u00B0 about the origin. Give the new x-coordinate.`, answer: -x, svg: svgTransform(x, y, 2), detail: `Rotate (${x}, ${y}) 180\u00B0 about origin` };
         }
     }
 
@@ -1161,13 +1404,13 @@
         const type = randInt(0, 2);
         if (type === 0) { // rectangle
             const l = randInt(3, 15), w = randInt(3, 15);
-            return { text: `Rectangle: l=${l}cm, w=${w}cm. Area?`, answer: l * w };
+            return { text: `Find the area of the rectangle`, answer: l * w, svg: svgRectangleArea(l, w), detail: `Rectangle: l=${l}cm, w=${w}cm` };
         } else if (type === 1) { // triangle
             const b = randInt(4, 20), h = randInt(2, 15);
-            return { text: `Triangle: base=${b}cm, height=${h}cm. Area?`, answer: b * h / 2 };
+            return { text: `Find the area of the triangle`, answer: b * h / 2, svg: svgTriangleArea(b, h), detail: `Triangle: base=${b}cm, height=${h}cm` };
         } else { // circle
             const r = randInt(2, 10);
-            return { text: `Circle: r=${r}cm. Area? (round to 2 d.p.)`, answer: +(Math.PI * r * r).toFixed(2) };
+            return { text: `Find the area of the circle (round to 2 d.p.)`, answer: +(Math.PI * r * r).toFixed(2), svg: svgCircleArea(r), detail: `Circle: r=${r}cm` };
         }
     }
 
@@ -1175,10 +1418,10 @@
         const type = randInt(0, 1);
         if (type === 0) { // rectangular prism
             const l = randInt(2, 10), w = randInt(2, 10), h = randInt(2, 10);
-            return { text: `Prism: l=${l}cm, w=${w}cm, h=${h}cm. Volume?`, answer: l * w * h };
+            return { text: `Find the volume of the prism`, answer: l * w * h, svg: svgPrismVolume(l, w, h), detail: `Prism: l=${l}cm, w=${w}cm, h=${h}cm` };
         } else { // cube
             const s = randInt(2, 8);
-            return { text: `Cube: side=${s}cm. Volume?`, answer: s * s * s };
+            return { text: `Find the volume of the cube`, answer: s * s * s, svg: svgCubeVolume(s), detail: `Cube: side=${s}cm` };
         }
     }
 
@@ -1666,6 +1909,7 @@
         if (count === 0) {
             $testSummaryInfo.innerHTML = '<p>Select at least one topic to begin</p>';
             $testStartBtn.disabled = true;
+            document.querySelectorAll('.test-time-btn').forEach(b => b.classList.remove('recommended'));
             return;
         }
 
@@ -1686,11 +1930,31 @@
         const mins = testState.timeLimit % 60;
         const timeStr = hrs > 0 ? `${hrs}h ${mins > 0 ? mins + 'min' : ''}` : `${mins} min`;
 
+        // Calculate recommended time (~1.5 min per mark, minimum 15 min)
+        const recommendedMins = Math.max(15, Math.ceil(totalMarks * 1.5 / 5) * 5); // Round to nearest 5
+        const timeOptions = [15, 30, 45, 60, 90, 120];
+        let closestTime = timeOptions[0];
+        let closestDiff = Math.abs(recommendedMins - closestTime);
+        timeOptions.forEach(t => {
+            const diff = Math.abs(recommendedMins - t);
+            if (diff < closestDiff) { closestDiff = diff; closestTime = t; }
+        });
+
+        // Highlight recommended time button
+        document.querySelectorAll('.test-time-btn').forEach(b => {
+            b.classList.toggle('recommended', parseInt(b.dataset.minutes) === closestTime);
+        });
+
+        const recHrs = Math.floor(closestTime / 60);
+        const recMins = closestTime % 60;
+        const recStr = recHrs > 0 ? `${recHrs}h ${recMins > 0 ? recMins + 'min' : ''}` : `${recMins} min`;
+
         $testSummaryInfo.innerHTML = `
             <div class="summary-stat"><span class="summary-label">Topics</span><span class="summary-value">${count}</span></div>
             <div class="summary-stat"><span class="summary-label">Questions</span><span class="summary-value">${totalQs}</span></div>
             <div class="summary-stat"><span class="summary-label">Total Marks</span><span class="summary-value">${totalMarks}</span></div>
             <div class="summary-stat"><span class="summary-label">Time Limit</span><span class="summary-value">${timeStr}</span></div>
+            <div class="summary-stat"><span class="summary-label">Recommended</span><span class="summary-value" style="color: var(--gold)">${recStr}</span></div>
             <div class="summary-stat"><span class="summary-label">Topics Selected</span><span class="summary-value">${topicNames.join(', ')}</span></div>
         `;
         $testStartBtn.disabled = false;
@@ -1812,6 +2076,8 @@
         $testQuestionArea.innerHTML = `
             <div class="test-q-number">Question ${testState.currentQ + 1}</div>
             <div class="test-q-topic">${q.categoryName} - ${q.topicName}</div>
+            ${q.svg ? `<div class="test-q-svg">${q.svg}</div>` : ''}
+            ${q.detail ? `<div class="test-q-detail">${q.detail}</div>` : ''}
             <div class="test-q-text">${q.text}</div>
             <div class="test-q-marks">[${q.marks} mark${q.marks !== 1 ? 's' : ''}]</div>
             <input type="text" class="test-q-input" id="testQInput" placeholder="Your answer" autocomplete="off" value="${testState.answers[testState.currentQ] !== null ? testState.answers[testState.currentQ] : ''}">
@@ -1976,8 +2242,9 @@
             qs.forEach(q => {
                 const resultCls = !q.wasAnswered ? 'unanswered' : q.isCorrect ? 'correct' : 'wrong';
                 const resultText = !q.wasAnswered ? '0/' + q.marks : q.isCorrect ? q.marks + '/' + q.marks : '0/' + q.marks;
+                const desc = q.detail || q.text;
                 html += `<div class="test-breakdown-q">
-                    <span>Q${q.index + 1}: ${q.text.substring(0, 50)}${q.text.length > 50 ? '...' : ''}</span>
+                    <span>Q${q.index + 1}: ${desc.substring(0, 60)}${desc.length > 60 ? '...' : ''}</span>
                     <span class="q-result ${resultCls}">${resultText}</span>
                 </div>`;
             });
@@ -2062,7 +2329,8 @@
                 doc.setFontSize(9);
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(60, 60, 60);
-                const qText = `Q${q.index + 1} (${q.marks}m): ${q.text}`.substring(0, 80);
+                const qDesc = q.detail || q.text;
+                const qText = `Q${q.index + 1} (${q.marks}m): ${qDesc}`.substring(0, 80);
                 doc.text(qText, margin, y);
                 y += 5;
 
