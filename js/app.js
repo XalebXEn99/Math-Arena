@@ -2038,10 +2038,16 @@
     function startTimer() {
         updateTimerDisplay();
         testState.timerInterval = setInterval(() => {
+            if (!testInProgress) {
+                clearInterval(testState.timerInterval);
+                testState.timerInterval = null;
+                return;
+            }
             testState.timeRemaining--;
             updateTimerDisplay();
             if (testState.timeRemaining <= 0) {
                 clearInterval(testState.timerInterval);
+                testState.timerInterval = null;
                 submitTest(true);
             }
         }, 1000);
@@ -2152,7 +2158,10 @@
 
     /* ---- Auto-submit (timeout or nav away) ---- */
     function autoSubmitTest() {
-        if (testState.timerInterval) clearInterval(testState.timerInterval);
+        if (testState.timerInterval) {
+            clearInterval(testState.timerInterval);
+            testState.timerInterval = null;
+        }
         if (testState.questions.length > 0 && testState.startTime) {
             markTest();
         }
@@ -2161,7 +2170,10 @@
 
     /* ---- Mark and Show Results ---- */
     function submitTest(timedOut) {
-        if (testState.timerInterval) clearInterval(testState.timerInterval);
+        if (testState.timerInterval) {
+            clearInterval(testState.timerInterval);
+            testState.timerInterval = null;
+        }
         markTest();
         if (timedOut) alert('Time is up! Your test has been submitted.');
     }
