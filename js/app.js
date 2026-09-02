@@ -2032,10 +2032,10 @@
         showTestScreen('testInProgressScreen');
         buildQuestionNav();
         renderCurrentQuestion();
-        startTimer();
+        startTestTimer();
     }
 
-    function startTimer() {
+    function startTestTimer() {
         updateTimerDisplay();
         testState.timerInterval = setInterval(() => {
             if (!testInProgress) {
