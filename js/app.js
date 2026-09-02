@@ -555,6 +555,9 @@
             </div>`;
         });
         $reviewList.innerHTML = reviewHtml;
+
+        // Show name modal to save results
+        setTimeout(() => showNameModal(), 500);
     }
 
     /* =========================================================
