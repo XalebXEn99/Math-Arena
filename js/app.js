@@ -556,16 +556,14 @@
         });
         $reviewList.innerHTML = reviewHtml;
 
-        // Show name modal after a short delay
-        setTimeout(() => {
-            const modal = document.getElementById('nameModal');
-            const input = document.getElementById('nameModalInput');
-            if (modal && input) {
-                input.value = '';
-                modal.classList.add('open');
-                setTimeout(() => input.focus(), 100);
-            }
-        }, 500);
+        // Show name modal immediately
+        const modal = document.getElementById('nameModal');
+        const input = document.getElementById('nameModalInput');
+        if (modal && input) {
+            input.value = '';
+            modal.classList.add('open');
+            setTimeout(() => input.focus(), 100);
+        }
     }
 
     /* =========================================================
